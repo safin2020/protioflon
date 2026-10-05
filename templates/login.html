@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="login-wrap">
+  <div class="login-card">
+    {% if office.logo %}
+      <img src="{{ office.logo.url }}" class="login-logo" alt="{{ office.title }}">
+    {% else %}
+      <div class="login-logo-fb"><i class="fas fa-newspaper"></i></div>
+    {% endif %}
+
+    <h1 class="login-title">{{ office.title }}</h1>
+    <p class="login-sub">Employee Management System</p>
+
+    {% if messages %}{% for m in messages %}
+      <div class="login-err"><i class="fas fa-exclamation-circle me-1"></i>{{ m }}</div>
+    {% endfor %}{% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      <label class="login-lbl">Email / Username</label>
+      <input type="text" name="username" class="login-inp" required autofocus>
+
+      <label class="login-lbl">Password</label>
+      <input type="password" name="password" class="login-inp" required>
+
+      <button type="submit" class="login-btn"><i class="fas fa-sign-in-alt"></i> Login</button>
+    </form>
+
+    <div class="login-note"><i class="fas fa-info-circle me-1"></i> First time? Use the admin account you created.</div>
+  </div>
+</div>
+{% endblock %}

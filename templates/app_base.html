@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="app-shell">
+  {% include "partials/sidebar.html" %}
+  <div class="sidebar-backdrop" id="backdrop"
+       onclick="document.getElementById('sidebar').classList.remove('show');this.classList.remove('show');"></div>
+
+ <main class="main-content" style="margin-left: 260px; transition: margin-left 0.3s ease;">
+    <div class="top-bar">
+      <div class="d-flex align-items-center">
+        <button class="menu-btn d-md-none"
+                onclick="document.getElementById('sidebar').classList.toggle('show');document.getElementById('backdrop').classList.toggle('show');">
+          <i class="fas fa-bars"></i>
+        </button>
+        <h4>{% block page_title %}Dashboard{% endblock %}</h4>
+      </div>
+      <div class="top-chip">
+        <!-- ✅ Photo or Initials -->
+        {% if user_emp and user_emp.photo %}
+          <img src="{{ user_emp.photo.url }}" 
+               alt="{{ user_emp.name }}" 
+               class="chip-avatar-img">
+        {% else %}
+          <div class="chip-avatar">{{ initials|default:user.username|slice:":1"|upper }}</div>
+        {% endif %}
+        
+        <div class="d-none d-sm-block">
+          <div class="chip-name">{{ display_name|default:user.get_full_name|default:user.username|title }}</div>
+          <div class="chip-role">{% now "d M, Y" %}</div>
+        </div>
+        <span class="role-badge role-{{ role_key }}">{{ role_label }}</span>
+        <form method="post" action="{% url 'logout' %}" style="display:inline;">
+          {% csrf_token %}
+          <button class="logout-btn" title="Logout"><i class="fas fa-sign-out-alt"></i></button>
+        </form>
+      </div>
+    </div>
+    {% block content %}{% endblock %}
+  </main>
+</div>
+{% endblock %}

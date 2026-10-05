@@ -1,0 +1,115 @@
+{% extends "app_base.html" %}
+{% block page_title %}{% if editing %}Edit Log{% else %}Add Content Log{% endif %}{% endblock %}
+
+{% block content %}
+<style>
+  .clf-inp {
+    width: 100%; border: 1.5px solid var(--border); border-radius: 12px;
+    padding: 9px 13px; font-size: 13.5px; background: #fff; transition: all .18s;
+  }
+  .clf-inp:focus { border-color: #f87171; outline: none; box-shadow: 0 0 0 3px rgba(239,68,68,.12); }
+  .clf-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .clf-icon {
+    width: 46px; height: 46px; border-radius: 14px; flex-shrink: 0;
+    background: linear-gradient(135deg, #ef4444, #c62828);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 17px; box-shadow: 0 6px 16px rgba(198,40,40,.28);
+  }
+  .clf-card select, .clf-card textarea {
+    width: 100%; border: 1.5px solid var(--border); border-radius: 12px;
+    padding: 9px 13px; font-size: 13.5px; background: #fff; transition: all .18s;
+  }
+  .clf-card select:focus, .clf-card textarea:focus {
+    border-color: #f87171; outline: none; box-shadow: 0 0 0 3px rgba(239,68,68,.12);
+  }
+  .clf-opt-note {
+    background: #f8faff; border: 1px dashed #c7d2fe; border-radius: 12px;
+    padding: 10px 14px; font-size: 12px; color: #6b7280; margin-bottom: 16px;
+  }
+</style>
+
+{% if messages %}{% for m in messages %}
+<div class="alert {% if m.tags == 'error' %}alert-danger{% else %}alert-success{% endif %} py-2 small fade-in" style="border-radius:12px;">{{ m }}</div>
+{% endfor %}{% endif %}
+
+<form method="post" class="panel-card clf-card fade-in" style="max-width:900px;">
+  {% csrf_token %}
+
+  <div class="clf-head">
+    <div class="clf-icon"><i class="fas fa-{% if editing %}pen{% else %}plus{% endif %}"></i></div>
+    <div>
+      <div style="font-weight:800;font-size:16px;color:#111827;">
+        {% if editing %}Edit: {{ editing.content_title|truncatechars:40 }}{% else %}New Content Log Entry{% endif %}
+      </div>
+      <div style="font-size:11.5px;color:#9ca3af;">Protifolon Log-Sheet এ entry যোগ করুন</div>
+    </div>
+  </div>
+
+  <div class="clf-opt-note">
+    <i class="fas fa-info-circle me-1" style="color:#6366f1;"></i>
+    
+  </div>
+
+  <div class="row g-3">
+    <div class="col-md-3">
+      <label class="form-label-light">Date</label>
+      <input type="date" name="log_date" class="clf-inp"
+             value="{{ form.log_date.value|date:'Y-m-d' }}">
+    </div>
+    <div class="col-md-9">
+      <label class="form-label-light">Content Title</label>
+      {{ form.content_title }}
+    </div>
+
+    <div class="col-md-4">
+      <label class="form-label-light">Category</label>
+      {{ form.category }}
+    </div>
+    <div class="col-md-4">
+      <label class="form-label-light">Assist (Mojo)</label>
+      {{ form.assist }}
+    </div>
+    <div class="col-md-4">
+      <label class="form-label-light">Item Type</label>
+      {{ form.item_type }}
+    </div>
+
+    <div class="col-md-4">
+      <label class="form-label-light">C-P (Camera Person)</label>
+      {{ form.cp }}
+    </div>
+    <div class="col-md-4">
+      <label class="form-label-light">Reporter Name</label>
+      {{ form.reporter }}
+    </div>
+    <div class="col-md-4">
+      <label class="form-label-light">Editors</label>
+      {{ form.editor }}
+    </div>
+
+    <div class="col-md-4">
+      <label class="form-label-light">Panel</label>
+      {{ form.panel }}
+    </div>
+    <div class="col-md-4">
+      <label class="form-label-light">Status</label>
+      {{ form.status }}
+    </div>
+    <div class="col-md-4">
+      <label class="form-label-light">Remark</label>
+      {{ form.remark }}
+    </div>
+  </div>
+
+  {% if form.non_field_errors %}
+    <div style="color:#dc2626;font-size:12px;margin-top:10px;">{{ form.non_field_errors|striptags }}</div>
+  {% endif %}
+
+  <div class="d-flex gap-2 mt-4">
+    <button class="btn-gradient" type="submit" style="width:auto;padding:10px 26px;">
+      <i class="fas fa-save"></i> Save Entry
+    </button>
+    <a href="{% url 'content_log' %}" class="btn-soft" style="text-decoration:none;">Cancel</a>
+  </div>
+</form>
+{% endblock %}

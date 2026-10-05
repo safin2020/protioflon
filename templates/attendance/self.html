@@ -1,0 +1,252 @@
+{% extends "app_base.html" %}
+{% block page_title %}My Attendance{% endblock %}
+
+{% block content %}
+<style>
+  .self-card { text-align: center; padding: 34px 24px; }
+  .self-time { font-size: 40px; font-weight: 800; color: #111827; letter-spacing: 1px; }
+  .self-date { color: #6b7280; font-size: 13px; margin-bottom: 22px; }
+  .stamp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+  .stamp-box { background: #f9fafb; border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
+  .stamp-box .lb { font-size: 11px; color: #6b7280; font-weight: 700; text-transform: uppercase; }
+  .stamp-box .vl { font-size: 17px; font-weight: 800; color: #111827; margin-top: 4px; }
+  .big-btn {
+    width: 100%; padding: 15px; border: none; border-radius: 14px; color: #fff;
+    font-size: 15px; font-weight: 800; cursor: pointer; transition: all .22s;
+    display: flex; align-items: center; justify-content: center; gap: 9px;
+  }
+  .big-btn:disabled { opacity: .7; cursor: not-allowed; }
+  .btn-in { background: linear-gradient(135deg, #34d399, #10b981); box-shadow: 0 8px 20px rgba(16,185,129,.3); }
+  .btn-out { background: linear-gradient(135deg, #f87171, #ef4444); box-shadow: 0 8px 20px rgba(239,68,68,.3); }
+  .big-btn:not(:disabled):hover { transform: translateY(-2px); }
+  .gps-note { font-size: 11.5px; color: #9ca3af; margin-top: 12px; }
+  .live-wrap { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .live-box { background: #f9fafb; border: 1px solid var(--border); border-radius: 14px; padding: 14px 12px; text-align: center; }
+  .live-box .lb { font-size: 10.5px; color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; }
+  .live-box .vl { font-size: 18px; font-weight: 800; margin-top: 4px; color: #111827; }
+  .vl-worked { color: #059669 !important; }
+  .vl-rem { color: #4f46e5 !important; }
+  .vl-ot { color: #f59e0b !important; }
+  .prog-track { height: 10px; background: #eef2f7; border-radius: 10px; overflow: hidden; margin: 6px 0 4px; }
+  .prog-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #6366f1, #8b5cf6); border-radius: 10px; transition: width .6s ease; }
+  .prog-fill.ot { background: linear-gradient(90deg, #f59e0b, #f97316); }
+  .prog-lbl { display: flex; justify-content: space-between; font-size: 11px; color: #6b7280; font-weight: 600; }
+  .wfh-banner {
+    background: linear-gradient(135deg, rgba(99,102,241,.10), rgba(139,92,246,.08));
+    border: 1px solid #e0e7ff; border-radius: 14px; padding: 16px; text-align: center;
+  }
+  .wfh-banner .t { font-weight: 800; color: #4338ca; font-size: 15px; }
+  .wfh-banner .s { font-size: 12px; color: #6b7280; margin-top: 4px; }
+</style>
+
+{% if messages %}{% for m in messages %}
+<div class="alert {% if m.tags == 'error' %}alert-danger{% else %}alert-success{% endif %} py-2 small fade-in" style="border-radius:12px;">{{ m }}</div>
+{% endfor %}{% endif %}
+
+<div class="row g-3 fade-in">
+  <!-- LEFT -->
+  <div class="col-md-5">
+    <div class="panel-card self-card">
+      <div class="self-time" id="clock">--:--:--</div>
+      <div class="self-date">{% now "d M, Y" %}</div>
+
+      {% if emp.duty_group == 'wfh' %}
+        <!-- ===== WFH: শুধু Present button ===== -->
+        <div class="wfh-banner mb-3">
+          <div class="t"><i class="fas fa-home me-1"></i> Work From Home</div>
+          <div class="s">No check-in/out or location need — press Present </div>
+        </div>
+        {% if att %}
+          <button class="big-btn" style="background:#d1fae5;color:#047857;box-shadow:none;" disabled>
+            <i class="fas fa-check-circle"></i> Present Today ✅
+          </button>
+        {% else %}
+          <form method="post" action="{% url 'self_stamp' 'wfh' %}">
+            {% csrf_token %}
+            <button class="big-btn btn-in" type="submit">
+              <i class="fas fa-home"></i> Mark Present
+            </button>
+          </form>
+        {% endif %}
+      {% else %}
+        <!-- ===== Office/Presenter: check in/out ===== -->
+        <div class="stamp-grid">
+          <div class="stamp-box">
+            <div class="lb">Check In</div>
+            <div class="vl">{% if att and att.check_in %}{{ att.check_in|time:"h:i A" }}{% else %}--:--{% endif %}</div>
+          </div>
+          <div class="stamp-box">
+            <div class="lb">Check Out</div>
+            <div class="vl">{% if att and att.check_out %}{{ att.check_out|time:"h:i A" }}{% else %}--:--{% endif %}</div>
+          </div>
+        </div>
+        <div class="mt-3">
+          {% if locked %}
+            <button class="big-btn" style="background:#e5e7eb;color:#6b7280;box-shadow:none;" disabled>
+              <i class="fas fa-lock"></i> Today Finalized
+            </button>
+          {% elif att and att.check_in %}
+            <form method="post" action="{% url 'self_stamp' 'out' %}">
+              {% csrf_token %}
+              <button class="big-btn btn-out" type="submit"><i class="fas fa-sign-out-alt"></i> Check Out</button>
+            </form>
+          {% else %}
+            <form method="post" action="{% url 'self_stamp' 'in' %}" id="inForm">
+              {% csrf_token %}
+              <input type="hidden" name="lat" id="lat">
+              <input type="hidden" name="lng" id="lng">
+              <input type="hidden" name="acc" id="acc">
+              <button class="big-btn btn-in" type="submit" id="inBtn">
+                <i class="fas fa-sign-in-alt"></i> Check In
+              </button>
+            </form>
+          {% endif %}
+        </div>
+        <div class="gps-note"><i class="fas fa-map-marker-alt me-1"></i> Check-In এ GPS location লাগবে (office radius: {{ office.office_radius }}m)</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="col-md-7">
+    {% if emp.duty_group == 'wfh' %}
+      <!-- ===== WFH summary: কোনো ঘণ্টা নেই ===== -->
+      <div class="panel-card">
+        <div class="panel-header"><i class="fas fa-history"></i> Today's Summary</div>
+        <div class="info-row"><span class="l">Status</span>
+          <span class="v">
+            {% if att %}<span class="badge-soft badge-active">Present (WFH)</span>
+            {% else %}<span class="badge-soft" style="background:#f3f4f6;color:#6b7280;">Not marked yet</span>{% endif %}
+          </span>
+        </div>
+        <div class="info-row"><span class="l">Duty Group</span><span class="v">Work From Home</span></div>
+        <div class="info-row"><span class="l">Duty Hours</span><span class="v">No fixed hours</span></div>
+        <div class="info-row" style="border-bottom:none;"><span class="l">Location</span><span class="v">Not required</span></div>
+      </div>
+    {% else %}
+      <!-- ===== Live summary ===== -->
+      <div class="panel-card"
+           id="liveCard"
+           data-in="{% if att and att.check_in %}{{ att.check_in|time:'H:i' }}{% endif %}"
+           data-out="{% if att and att.check_out %}{{ att.check_out|time:'H:i' }}{% endif %}"
+           data-target="{{ emp.target_hours }}">
+
+        <div class="panel-header">
+          <i class="fas fa-history"></i> Today's Summary
+          {% if att and att.check_in and not att.check_out %}
+            <span class="badge-soft badge-active ms-auto"><span class="live-dot"></span>LIVE</span>
+          {% endif %}
+        </div>
+
+        <div class="live-wrap">
+          <div class="live-box">
+            <div class="lb">Worked</div>
+            <div class="vl vl-worked" id="workedVal">0h 0m</div>
+          </div>
+          <div class="live-box">
+            <div class="lb">Remaining</div>
+            <div class="vl vl-rem" id="remVal">{{ emp.target_hours }}h</div>
+          </div>
+          <div class="live-box">
+            <div class="lb">Overtime</div>
+            <div class="vl vl-ot" id="otVal">-</div>
+          </div>
+        </div>
+
+        <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+        <div class="prog-lbl">
+          <span id="progPct">0%</span>
+          <span>Target: {{ emp.target_hours }}h</span>
+        </div>
+
+        <div class="mt-3">
+          <div class="info-row"><span class="l">Status</span>
+            <span class="v">{% if att %}<span class="badge-soft badge-active">{{ att.get_status_display }}</span>{% else %}<span class="badge-soft" style="background:#f3f4f6;color:#6b7280;">Not stamped</span>{% endif %}</span>
+          </div>
+          <div class="info-row"><span class="l">Duty Group</span><span class="v">{{ emp.get_duty_group_display }}</span></div>
+          <div class="info-row"><span class="l">Location</span>
+            <span class="v">{% if att and att.check_in_distance %}<i class="fas fa-map-marker-alt" style="color:#10b981;"></i> {{ att.check_in_distance }}m from office{% else %}-{% endif %}</span>
+          </div>
+          <div class="info-row" style="border-bottom:none;"><span class="l">Monthly Target</span><span class="v">{{ emp.target_hours }}h / day</span></div>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+  setInterval(function () {
+    document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-GB');
+  }, 1000);
+
+  // Live hours (office staff only)
+  (function () {
+    var card = document.getElementById('liveCard');
+    if (!card) return;
+    var tinS = card.getAttribute('data-in');
+    var toutS = card.getAttribute('data-out');
+    var target = parseFloat(card.getAttribute('data-target')) || 8;
+    function p(t) { if (!t) return null; var a = t.split(':'); return { h: +a[0], m: +a[1] }; }
+    function fmt(h) {
+      if (h <= 0) return '0m';
+      var hh = Math.floor(h), mm = Math.round((h - hh) * 60);
+      if (mm === 60) { hh++; mm = 0; }
+      if (hh && mm) return hh + 'h ' + mm + 'm';
+      if (hh) return hh + 'h';
+      return mm + 'm';
+    }
+    function fmtLive(h) {
+      var total = Math.floor(h * 3600);
+      var hh = Math.floor(total / 3600), mm = Math.floor((total % 3600) / 60), ss = total % 60;
+      return hh + 'h ' + mm + 'm ' + ss + 's';
+    }
+    var wEl = document.getElementById('workedVal');
+    var rEl = document.getElementById('remVal');
+    var oEl = document.getElementById('otVal');
+    var fill = document.getElementById('progFill');
+    var pct = document.getElementById('progPct');
+    function tick() {
+      var tin = p(tinS), tout = p(toutS);
+      if (!tin) { wEl.textContent = '0h 0m'; rEl.textContent = fmt(target); oEl.textContent = '-'; fill.style.width = '0%'; pct.textContent = '0%'; return; }
+      var s = new Date(); s.setHours(tin.h, tin.m, 0, 0);
+      var e;
+      if (tout) { e = new Date(); e.setHours(tout.h, tout.m, 0, 0); } else { e = new Date(); }
+      var el = Math.max(0, (e - s) / 3600000);
+      var live = !tout;
+      wEl.textContent = live ? fmtLive(el) : fmt(el);
+      var rem = Math.max(0, target - el);
+      rEl.textContent = rem <= 0 ? 'Done ✅' : fmt(rem);
+      var ot = Math.max(0, el - target);
+      oEl.textContent = ot > 0 ? fmt(ot) : '-';
+      var percent = Math.min(100, (el / target) * 100);
+      fill.style.width = percent + '%';
+      pct.textContent = Math.round(percent) + '%';
+      if (ot > 0) fill.classList.add('ot');
+    }
+    tick();
+    setInterval(tick, 1000);
+  })();
+
+  // GPS check-in (office staff only)
+  var inForm = document.getElementById('inForm');
+  if (inForm) {
+    inForm.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var btn = document.getElementById('inBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting location...';
+      if (!navigator.geolocation) { inForm.submit(); return; }
+      navigator.geolocation.getCurrentPosition(
+        function (pos) {
+          document.getElementById('lat').value = pos.coords.latitude;
+          document.getElementById('lng').value = pos.coords.longitude;
+          document.getElementById('acc').value = pos.coords.accuracy;
+          inForm.submit();
+        },
+        function () { inForm.submit(); },
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    });
+  }
+</script>
+{% endblock %}

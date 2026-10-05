@@ -1,0 +1,88 @@
+{% extends "app_base.html" %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="fade-in mb-3">
+  <h4 style="font-weight:800;margin-bottom:2px;">Welcome back, <span class="text-gradient">{{ display_name }}</span> 👋</h4>
+  <div style="color:#6b7280;font-size:13px;">Here's what's happening today — {{ today|date:"d M, Y" }}</div>
+</div>
+
+<div class="stat-grid fade-in">
+  <div class="stat-card">
+    <div class="stat-icon" style="background:linear-gradient(135deg,#93c5fd,#3b82f6);"><i class="fas fa-users"></i></div>
+    <div class="stat-value">{{ total_employees }}</div>
+    <div class="stat-label">Total Employees</div>
+  </div>
+  {% if mojo_count > 0 %}
+  <div class="stat-card">
+    <div class="stat-icon" style="background:linear-gradient(135deg,#fcd34d,#f59e0b);"><i class="fas fa-star"></i></div>
+    <div class="stat-value">{{ mojo_count }}</div>
+    <div class="stat-label">Mojo (No Tracking)</div>
+  </div>
+  {% endif %}
+  <div class="stat-card">
+    <div class="stat-icon" style="background:linear-gradient(135deg,#6ee7b7,#10b981);"><i class="fas fa-user-check"></i></div>
+    <div class="stat-value">{{ present_today }}</div>
+    <div class="stat-label">Present Today</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background:linear-gradient(135deg,#c4b5fd,#8b5cf6);"><i class="fas fa-home"></i></div>
+    <div class="stat-value">{{ wfh_today }}</div>
+    <div class="stat-label">Work From Home</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background:linear-gradient(135deg,#fcd34d,#f59e0b);"><i class="fas fa-calendar-check"></i></div>
+    <div class="stat-value">{{ on_leave }}</div>
+    <div class="stat-label">On Leave</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background:linear-gradient(135deg,#fca5a5,#ef4444);"><i class="fas fa-user-times"></i></div>
+    <div class="stat-value">{{ absent_today }}</div>
+    <div class="stat-label">Absent Today</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background:linear-gradient(135deg,#fdba74,#f97316);"><i class="fas fa-door-closed"></i></div>
+    <div class="stat-value">{{ off_today }}</div>
+    <div class="stat-label">Off Day</div>
+  </div>
+</div>
+
+<div class="row g-3 fade-in">
+  <div class="col-lg-8">
+    <div class="panel-card" style="margin-bottom:0;">
+      <div class="panel-header"><i class="fas fa-chart-line"></i> Recent Activity</div>
+      {% for a in activities %}
+      <div class="ac-row">
+        <div class="ac-ic" style="background:{{ a.bg }};color:{{ a.fg }};"><i class="fas {{ a.icon }}"></i></div>
+        <div>
+          <div class="ac-txt">{{ a.text }}</div>
+          <div class="ac-sub">{{ a.sub }}</div>
+        </div>
+      </div>
+      {% empty %}
+      <div class="empty-note">Attendance, leave and payroll activity will appear here.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="panel-card" style="margin-bottom:0;">
+      <div class="panel-header"><i class="fas fa-user-plus"></i> Recent Joinees</div>
+      {% for j in recent_joinees %}
+      <div class="jn-row">
+        <div class="jn-av">
+          {% if j.emp.photo %}<img src="{{ j.emp.photo.url }}" alt="">{% else %}{{ j.initials }}{% endif %}
+        </div>
+        <div class="jn-meta">
+          <div class="jn-name">{{ j.emp.name }}</div>
+          <div class="jn-sub">{{ j.emp.designation }} • {{ j.emp.department }}</div>
+        </div>
+        <span class="jn-date">{{ j.emp.joining_date|date:"d M, y" }}</span>
+      </div>
+      {% empty %}
+      <div class="empty-note">No employees yet.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,417 @@
+{% extends "app_base.html" %}
+{% block page_title %}Content Report{% endblock %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+  .cr-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+  }
+  .cr-header h4 { margin: 0; font-weight: 800; color: #111827; }
+
+  /* ===== Filter Bar ===== */
+  .cr-filter-bar {
+    background: #fff; border: 1px solid var(--border); border-radius: 14px;
+    box-shadow: var(--shadow); padding: 16px 18px; margin-bottom: 20px;
+  }
+  .cr-filter-title {
+    font-size: 12px; font-weight: 800; color: #6366f1; text-transform: uppercase;
+    letter-spacing: .5px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
+  }
+  .cr-filter-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px; margin-bottom: 12px;
+  }
+  .cr-filter-item label {
+    display: block; font-size: 11px; font-weight: 700; color: #6b7280;
+    margin-bottom: 4px; text-transform: uppercase;
+  }
+  .cr-filter-item input, .cr-filter-item select {
+    width: 100%; border: 1.5px solid var(--border); border-radius: 10px;
+    padding: 8px 10px; font-size: 12.5px; background: #fff; color: #374151;
+    transition: all .18s;
+  }
+  .cr-filter-item input:focus, .cr-filter-item select:focus {
+    border-color: #6366f1; outline: none; box-shadow: 0 0 0 3px rgba(99,102,241,.12);
+  }
+  .cr-filter-actions {
+    display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;
+  }
+  .cr-btn {
+    padding: 8px 16px; border-radius: 10px; font-size: 12px; font-weight: 700;
+    border: none; cursor: pointer; transition: all .18s; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .cr-btn:hover { transform: translateY(-1px); text-decoration: none; }
+  .cr-btn-apply {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff;
+    box-shadow: 0 4px 12px rgba(99,102,241,.3);
+  }
+  .cr-btn-apply:hover { box-shadow: 0 6px 16px rgba(99,102,241,.4); }
+  .cr-btn-clear {
+    background: #f3f4f6; color: #4b5563; border: 1px solid #e5e7eb;
+  }
+  .cr-btn-clear:hover { background: #e5e7eb; }
+
+  /* ===== Active Filters Badge ===== */
+  .cr-active-filters {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px;
+  }
+  .cr-active-badge {
+    background: #eef2ff; color: #4338ca; padding: 4px 10px; border-radius: 12px;
+    font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;
+  }
+  .cr-active-badge i { font-size: 10px; }
+
+  .cr-stats {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px; margin-bottom: 20px;
+  }
+  .cr-stat {
+    background: #fff; border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px; box-shadow: var(--shadow);
+  }
+  .cr-stat .val { font-size: 28px; font-weight: 800; color: #111827; }
+  .cr-stat .lbl { font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; margin-top: 2px; }
+  .cr-stat.total .val { color: #6366f1; }
+  .cr-stat.mojo .val { color: #f59e0b; }
+  .cr-stat.up .val { color: #10b981; }
+  .cr-stat.edit .val { color: #f97316; }
+
+  .cr-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    gap: 16px; margin-bottom: 20px;
+  }
+  .cr-card {
+    background: #fff; border: 1px solid var(--border); border-radius: 14px;
+    padding: 18px; box-shadow: var(--shadow);
+  }
+  .cr-card h6 {
+    margin: 0 0 14px; font-weight: 800; font-size: 14px; color: #111827;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .cr-card h6 i { color: #6366f1; }
+  .cr-chart-wrap { position: relative; height: 280px; }
+  .cr-chart-wrap.small { height: 220px; }
+
+  .cr-top-list { list-style: none; padding: 0; margin: 0; }
+  .cr-top-list li {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 0; border-bottom: 1px solid #f3f4f6; font-size: 13px;
+  }
+  .cr-top-list li:last-child { border-bottom: none; }
+  .cr-top-list .name { font-weight: 700; color: #111827; }
+  .cr-top-list .count {
+    background: #eef2ff; color: #4338ca; padding: 3px 10px; border-radius: 10px;
+    font-size: 11.5px; font-weight: 800;
+  }
+  .cr-top-list .rank {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: #f3f4f6; color: #6b7280; font-size: 11px; font-weight: 800;
+    display: inline-flex; align-items: center; justify-content: center; margin-right: 8px;
+  }
+  .cr-top-list li:nth-child(1) .rank { background: #fbbf24; color: #fff; }
+  .cr-top-list li:nth-child(2) .rank { background: #9ca3af; color: #fff; }
+  .cr-top-list li:nth-child(3) .rank { background: #d97706; color: #fff; }
+</style>
+
+<!-- ===== Filter Bar ===== -->
+<form method="get" class="cr-filter-bar fade-in">
+  <div class="cr-filter-title">
+    <i class="fas fa-filter"></i> Filters
+  </div>
+  
+  <div class="cr-filter-grid">
+    <div class="cr-filter-item">
+      <label><i class="fas fa-calendar me-1"></i> From Date</label>
+      <input type="date" name="from_date" value="{{ from_date_str|default:from_date|date:'Y-m-d' }}">
+    </div>
+    <div class="cr-filter-item">
+      <label><i class="fas fa-calendar me-1"></i> To Date</label>
+      <input type="date" name="to_date" value="{{ to_date_str|default:to_date|date:'Y-m-d' }}">
+    </div>
+    <div class="cr-filter-item">
+      <label><i class="fas fa-user me-1"></i> Reporter</label>
+      <select name="reporter">
+        <option value="">All Reporters</option>
+        {% for r in all_reporters %}
+          <option value="{{ r.id }}" {% if reporter_id == r.id|stringformat:"s" %}selected{% endif %}>{{ r.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="cr-filter-item">
+      <label><i class="fas fa-cut me-1"></i> Editor</label>
+      <select name="editor">
+        <option value="">All Editors</option>
+        {% for e in all_editors %}
+          <option value="{{ e.id }}" {% if editor_id == e.id|stringformat:"s" %}selected{% endif %}>{{ e.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="cr-filter-item">
+      <label><i class="fas fa-folder me-1"></i> Category</label>
+      <select name="category">
+        <option value="">All Categories</option>
+        {% for c in all_categories %}
+          <option value="{{ c.id }}" {% if category_id == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="cr-filter-item">
+      <label><i class="fas fa-tv me-1"></i> Panel</label>
+      <select name="panel">
+        <option value="">All Panels</option>
+        {% for p in all_panels %}
+          <option value="{{ p.id }}" {% if panel_id == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="cr-filter-item">
+      <label><i class="fas fa-film me-1"></i> Item Type</label>
+      <select name="item_type">
+        <option value="">All Types</option>
+        {% for t in all_item_types %}
+          <option value="{{ t.id }}" {% if item_type_id == t.id|stringformat:"s" %}selected{% endif %}>{{ t.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="cr-filter-item">
+      <label><i class="fas fa-check-circle me-1"></i> Status</label>
+      <select name="status">
+        <option value="">All Status</option>
+        {% for s in all_statuses %}
+          <option value="{{ s.id }}" {% if status_id == s.id|stringformat:"s" %}selected{% endif %}>{{ s.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+  
+  <div class="cr-filter-actions">
+    <button type="submit" class="cr-btn cr-btn-apply">
+      <i class="fas fa-search"></i> Apply Filters
+    </button>
+    <a href="{% url 'content_report' %}" class="cr-btn cr-btn-clear">
+      <i class="fas fa-times"></i> Clear All
+    </a>
+  </div>
+</form>
+
+<!-- ===== Active Filters ===== -->
+{% if has_filters %}
+<div class="cr-active-filters fade-in">
+  <span style="font-size:11px;font-weight:700;color:#6b7280;margin-right:4px;">Active:</span>
+  {% if from_date_str or to_date_str %}
+    <span class="cr-active-badge"><i class="fas fa-calendar"></i> {{ from_date|date:"d M" }} - {{ to_date|date:"d M, Y" }}</span>
+  {% endif %}
+  {% if reporter_id %}
+    <span class="cr-active-badge"><i class="fas fa-user"></i> Reporter</span>
+  {% endif %}
+  {% if editor_id %}
+    <span class="cr-active-badge"><i class="fas fa-cut"></i> Editor</span>
+  {% endif %}
+  {% if category_id %}
+    <span class="cr-active-badge"><i class="fas fa-folder"></i> Category</span>
+  {% endif %}
+  {% if panel_id %}
+    <span class="cr-active-badge"><i class="fas fa-tv"></i> Panel</span>
+  {% endif %}
+  {% if item_type_id %}
+    <span class="cr-active-badge"><i class="fas fa-film"></i> Item Type</span>
+  {% endif %}
+  {% if status_id %}
+    <span class="cr-active-badge"><i class="fas fa-check-circle"></i> Status</span>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- ===== Header ===== -->
+<div class="cr-header fade-in">
+  <h4><i class="fas fa-chart-pie me-2" style="color:#6366f1;"></i>Content Report</h4>
+  <div style="display:flex;gap:8px;">
+    <a href="{% url 'content_report_pdf' %}?{% if from_date_str %}from_date={{ from_date_str }}&{% endif %}{% if to_date_str %}to_date={{ to_date_str }}&{% endif %}{% if reporter_id %}reporter={{ reporter_id }}&{% endif %}{% if editor_id %}editor={{ editor_id }}&{% endif %}{% if category_id %}category={{ category_id }}&{% endif %}{% if panel_id %}panel={{ panel_id }}&{% endif %}{% if item_type_id %}item_type={{ item_type_id }}&{% endif %}{% if status_id %}status={{ status_id }}{% endif %}" 
+       class="cr-btn" style="background:#c62828;color:#fff;padding:8px 16px;border-radius:10px;text-decoration:none;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:6px;">
+      <i class="fas fa-file-pdf"></i> Download PDF
+    </a>
+  </div>
+</div>
+
+<!-- ===== Stats ===== -->
+<div class="cr-stats fade-in">
+  <div class="cr-stat total">
+    <div class="val">{{ total }}</div>
+    <div class="lbl">Total Content</div>
+  </div>
+  <div class="cr-stat mojo">
+    <div class="val">{{ mojo_count }}</div>
+    <div class="lbl">Mojo Items</div>
+  </div>
+  <div class="cr-stat up">
+    <div class="val">{{ status_type_count }}</div>
+    <div class="lbl">Status Types</div>
+  </div>
+  <div class="cr-stat edit">
+    <div class="val">{{ reporter_count }}</div>
+    <div class="lbl">Active Reporters</div>
+  </div>
+</div>
+
+<!-- ===== Charts Row 1 ===== -->
+<div class="cr-grid fade-in">
+  <div class="cr-card">
+    <h6><i class="fas fa-chart-pie"></i> Category Distribution</h6>
+    <div class="cr-chart-wrap"><canvas id="categoryChart"></canvas></div>
+  </div>
+  <div class="cr-card">
+    <h6><i class="fas fa-chart-bar"></i> Top Reporters</h6>
+    <div class="cr-chart-wrap"><canvas id="reporterChart"></canvas></div>
+  </div>
+</div>
+
+<!-- ===== Charts Row 2 ===== -->
+<div class="cr-grid fade-in">
+  <div class="cr-card">
+    <h6><i class="fas fa-chart-bar"></i> Top Editors</h6>
+    <div class="cr-chart-wrap"><canvas id="editorChart"></canvas></div>
+  </div>
+  <div class="cr-card">
+    <h6><i class="fas fa-chart-pie"></i> Status Distribution</h6>
+    <div class="cr-chart-wrap small"><canvas id="statusChart"></canvas></div>
+  </div>
+</div>
+
+<!-- ===== Charts Row 3 ===== -->
+<div class="cr-grid fade-in">
+  <div class="cr-card">
+    <h6><i class="fas fa-chart-pie"></i> Panel Distribution</h6>
+    <div class="cr-chart-wrap small"><canvas id="panelChart"></canvas></div>
+  </div>
+  <div class="cr-card">
+    <h6><i class="fas fa-chart-pie"></i> Item Type Distribution</h6>
+    <div class="cr-chart-wrap small"><canvas id="itemTypeChart"></canvas></div>
+  </div>
+</div>
+
+<!-- ===== Daily Trend ===== -->
+<div class="cr-card fade-in" style="margin-bottom:20px;">
+  <h6><i class="fas fa-chart-line"></i> Daily Trend</h6>
+  <div class="cr-chart-wrap" style="height:300px;"><canvas id="trendChart"></canvas></div>
+</div>
+
+<!-- ===== Top Lists ===== -->
+<div class="cr-grid fade-in">
+  <div class="cr-card">
+    <h6><i class="fas fa-trophy" style="color:#f59e0b;"></i> Top 10 Reporters</h6>
+    <ul class="cr-top-list">
+      {% for name, count in top_reporters %}
+      <li>
+        <div><span class="rank">{{ forloop.counter }}</span><span class="name">{{ name }}</span></div>
+        <span class="count">{{ count }}</span>
+      </li>
+      {% empty %}
+      <li style="color:#9ca3af;text-align:center;">No data</li>
+      {% endfor %}
+    </ul>
+  </div>
+  <div class="cr-card">
+    <h6><i class="fas fa-trophy" style="color:#10b981;"></i> Top 10 Editors</h6>
+    <ul class="cr-top-list">
+      {% for name, count in top_editors %}
+      <li>
+        <div><span class="rank">{{ forloop.counter }}</span><span class="name">{{ name }}</span></div>
+        <span class="count">{{ count }}</span>
+      </li>
+      {% empty %}
+      <li style="color:#9ca3af;text-align:center;">No data</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+<script>
+  Chart.defaults.font.family = "'Inter', sans-serif";
+  Chart.defaults.color = '#6b7280';
+  Chart.defaults.plugins.legend.labels.usePointStyle = true;
+  Chart.defaults.plugins.legend.labels.padding = 12;
+
+  function makePie(id, labels, values, colors) {
+    new Chart(document.getElementById(id), {
+      type: 'doughnut',
+      data: {
+        labels: JSON.parse(labels),
+        datasets: [{
+          data: JSON.parse(values),
+          backgroundColor: JSON.parse(colors),
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } },
+        cutout: '60%'
+      }
+    });
+  }
+
+  function makeBar(id, labels, values, colors) {
+    new Chart(document.getElementById(id), {
+      type: 'bar',
+      data: {
+        labels: JSON.parse(labels),
+        datasets: [{
+          label: 'Count',
+          data: JSON.parse(values),
+          backgroundColor: JSON.parse(colors),
+          borderRadius: 8,
+          borderSkipped: false
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false } },
+          y: { grid: { display: false } }
+        }
+      }
+    });
+  }
+
+  makePie('categoryChart', '{{ category_chart.labels|escapejs }}', '{{ category_chart.values|escapejs }}', '{{ category_chart.colors|escapejs }}');
+  makePie('statusChart', '{{ status_chart.labels|escapejs }}', '{{ status_chart.values|escapejs }}', '{{ status_chart.colors|escapejs }}');
+  makePie('panelChart', '{{ panel_chart.labels|escapejs }}', '{{ panel_chart.values|escapejs }}', '{{ panel_chart.colors|escapejs }}');
+  makePie('itemTypeChart', '{{ item_type_chart.labels|escapejs }}', '{{ item_type_chart.values|escapejs }}', '{{ item_type_chart.colors|escapejs }}');
+
+  makeBar('reporterChart', '{{ reporter_chart.labels|escapejs }}', '{{ reporter_chart.values|escapejs }}', '{{ reporter_chart.colors|escapejs }}');
+  makeBar('editorChart', '{{ editor_chart.labels|escapejs }}', '{{ editor_chart.values|escapejs }}', '{{ editor_chart.colors|escapejs }}');
+
+  new Chart(document.getElementById('trendChart'), {
+    type: 'line',
+    data: {
+      labels: {{ daily_labels|safe }},
+      datasets: [{
+        label: 'Content Count',
+        data: {{ daily_values|safe }},
+        borderColor: '#6366f1',
+        backgroundColor: 'rgba(99,102,241,0.1)',
+        borderWidth: 2.5,
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#6366f1',
+        pointRadius: 4,
+        pointHoverRadius: 6
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: '#f3f4f6' } }
+      }
+    }
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,118 @@
+{% extends "app_base.html" %}
+{% block page_title %}Duty Hours{% endblock %}
+
+{% block content %}
+<style>
+  .dh-bar {
+    background: #fff; border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 14px 18px; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .dh-bar .lbl { font-size: 12px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .5px; }
+  .dh-inp {
+    border: 1.5px solid var(--border); border-radius: 10px; padding: 8px 12px;
+    font-size: 13px; background: #fff; color: #374151; transition: all .18s;
+  }
+  .dh-inp:focus { border-color: #818cf8; outline: none; box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
+  .dh-note {
+    background: #eef2ff; border: 1px dashed #c7d2fe; border-radius: 12px;
+    padding: 10px 14px; font-size: 12px; color: #4338ca; margin-bottom: 14px;
+  }
+  .dh-card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow-x: auto; }
+  .dh-card table { width: 100%; border-collapse: collapse; min-width: 700px; }
+  .dh-card th {
+    background: #f8fafc; color: #64748b; font-size: 11px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .4px; padding: 10px 14px; text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .dh-card td { padding: 10px 14px; border-bottom: 1px solid #f3f4f6; font-size: 13px; color: #374151; }
+  .dh-card tr:last-child td { border-bottom: none; }
+  .dh-card tr:hover td { background: #f8faff; }
+  .dh-hours-inp {
+    width: 90px; border: 1.5px solid var(--border); border-radius: 10px;
+    padding: 7px 10px; font-size: 13.5px; font-weight: 700; color: #4338ca;
+    background: #f8faff; text-align: center; transition: all .18s;
+  }
+  .dh-hours-inp:focus { border-color: #818cf8; outline: none; background: #fff; box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
+  .dh-custom {
+    background: #fef3c7; color: #92400e; padding: 3px 10px; border-radius: 12px;
+    font-size: 10.5px; font-weight: 800;
+  }
+  .dh-default {
+    background: #e5e7eb; color: #4b5563; padding: 3px 10px; border-radius: 12px;
+    font-size: 10.5px; font-weight: 800;
+  }
+  .dh-remark-inp {
+    width: 200px; border: 1.5px solid var(--border); border-radius: 10px;
+    padding: 7px 10px; font-size: 12px; background: #fff; transition: all .18s;
+  }
+  .dh-remark-inp:focus { border-color: #818cf8; outline: none; }
+</style>
+
+{% if messages %}{% for m in messages %}
+<div class="alert {% if m.tags == 'error' %}alert-danger{% else %}alert-success{% endif %} py-2 small fade-in" style="border-radius:12px;">{{ m }}</div>
+{% endfor %}{% endif %}
+
+<!-- ===== Date Picker Bar ===== -->
+<form method="get" class="dh-bar fade-in">
+  <span class="lbl"><i class="fas fa-calendar-day me-1"></i> Date:</span>
+  <input type="date" name="date" class="dh-inp" value="{{ day|date:'Y-m-d' }}" onchange="this.form.submit()">
+  <span style="font-size:13px;font-weight:700;color:#111827;">{{ day|date:"d F, Y (l)" }}</span>
+</form>
+
+<!-- ===== Info Note ===== -->
+<div class="dh-note fade-in">
+  <i class="fas fa-info-circle me-1"></i>
+  প্রতি employee এর <b>এই দিনের</b> duty hours লিখে Save করুন। খালি রাখলে default hours (যেমন 8h) ব্যবহার হবে।
+  Overtime ও Remaining time এই hours অনুযায়ী auto-calculate হবে।
+</div>
+
+<!-- ===== Form Table ===== -->
+<form method="post" class="dh-card fade-in">
+  {% csrf_token %}
+  <input type="hidden" name="date" value="{{ day|date:'Y-m-d' }}">
+  <table>
+    <thead>
+      <tr>
+        <th>Employee</th>
+        <th>Default Hours</th>
+        <th>এই দিনের Duty Hours</th>
+        <th>Remark (ঐচ্ছিক)</th>
+        <th>State</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>
+          <div style="font-weight:700;color:#111827;">{{ r.emp.name }}</div>
+          <div style="font-size:11px;color:#6b7280;">{{ r.emp.emp_id }} • {{ r.emp.designation }}</div>
+        </td>
+        <td><span class="dh-default">{{ r.emp.target_hours }}h</span></td>
+        <td>
+          <input type="number" step="0.5" min="0" max="24" name="hours_{{ r.emp.id }}"
+                 class="dh-hours-inp" value="{{ r.hours|floatformat:'-2' }}" placeholder="8">
+        </td>
+        <td>
+          <input type="text" name="remark_{{ r.emp.id }}" class="dh-remark-inp"
+                 value="{{ r.override.remark|default:'' }}" placeholder="যেমন: half day, special duty...">
+        </td>
+        <td>
+          {% if r.custom %}<span class="dh-custom">✏️ Custom</span>
+          {% else %}<span class="dh-default">Default</span>{% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="5" style="text-align:center;color:#9ca3af;padding:30px;">কোনো active employee নেই।</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div style="padding:14px 18px;border-top:1px solid var(--border);">
+    <button class="btn-gradient" type="submit" style="width:auto;padding:10px 26px;">
+      <i class="fas fa-save"></i> Save Duty Hours
+    </button>
+  </div>
+</form>
+{% endblock %}

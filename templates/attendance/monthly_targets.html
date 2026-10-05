@@ -1,0 +1,139 @@
+{% extends "app_base.html" %}
+{% block page_title %}Monthly Targets{% endblock %}
+
+{% block content %}
+<style>
+  .mt-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+  }
+  .mt-header h4 { margin: 0; font-weight: 800; color: #111827; }
+  .mt-nav { display: flex; gap: 8px; align-items: center; }
+  .mt-nav-btn {
+    padding: 8px 14px; border-radius: 10px; border: 1px solid var(--border);
+    background: #fff; font-size: 12px; font-weight: 700; color: #4b5563;
+    text-decoration: none; transition: all .18s;
+  }
+  .mt-nav-btn:hover { background: #f5f7ff; text-decoration: none; }
+  .mt-month-label {
+    font-size: 15px; font-weight: 800; color: #111827;
+    padding: 8px 16px; background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff; border-radius: 10px; min-width: 180px; text-align: center;
+  }
+
+  .mt-note {
+    background: #eef2ff; border: 1px dashed #c7d2fe; border-radius: 12px;
+    padding: 12px 16px; font-size: 12.5px; color: #4338ca; margin-bottom: 16px;
+  }
+  .mt-card {
+    background: #fff; border: 1px solid var(--border); border-radius: 14px;
+    box-shadow: var(--shadow); overflow-x: auto;
+  }
+  .mt-card table { width: 100%; border-collapse: collapse; min-width: 700px; }
+  .mt-card th {
+    background: #f8fafc; color: #64748b; font-size: 11px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .4px; padding: 12px 14px; text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .mt-card td { padding: 12px 14px; border-bottom: 1px solid #f3f4f6; font-size: 13px; color: #374151; }
+  .mt-card tr:last-child td { border-bottom: none; }
+  .mt-card tr:hover td { background: #f8faff; }
+
+  .mt-emp-name { font-weight: 700; color: #111827; }
+  .mt-emp-id { font-size: 11px; color: #6b7280; }
+  .mt-auto {
+    background: #f3f4f6; color: #6b7280; padding: 4px 10px; border-radius: 10px;
+    font-size: 11.5px; font-weight: 700; display: inline-block;
+  }
+  .mt-hours-inp {
+    width: 100px; border: 1.5px solid var(--border); border-radius: 10px;
+    padding: 8px 10px; font-size: 14px; font-weight: 700; color: #4338ca;
+    background: #f8faff; text-align: center;
+  }
+  .mt-hours-inp:focus { border-color: #818cf8; outline: none; background: #fff; }
+  .mt-remark-inp {
+    width: 200px; border: 1.5px solid var(--border); border-radius: 10px;
+    padding: 7px 10px; font-size: 12px; background: #fff;
+  }
+  .mt-custom {
+    background: #fef3c7; color: #92400e; padding: 3px 10px; border-radius: 12px;
+    font-size: 10.5px; font-weight: 800;
+  }
+  .mt-default {
+    background: #e5e7eb; color: #4b5563; padding: 3px 10px; border-radius: 12px;
+    font-size: 10.5px; font-weight: 800;
+  }
+</style>
+
+{% if messages %}{% for m in messages %}
+<div class="alert {% if m.tags == 'error' %}alert-danger{% else %}alert-success{% endif %} py-2 small fade-in" style="border-radius:12px;">{{ m }}</div>
+{% endfor %}{% endif %}
+
+<!-- ===== Header ===== -->
+<div class="mt-header fade-in">
+  <h4><i class="fas fa-bullseye me-2" style="color:#6366f1;"></i>Monthly Target Hours</h4>
+  <div class="mt-nav">
+    <a class="mt-nav-btn" href="?year={{ year }}&month={{ month }}&prev=1">
+      <i class="fas fa-chevron-left"></i> Previous
+    </a>
+    <div class="mt-month-label">{{ month_name }}</div>
+    <a class="mt-nav-btn" href="?year={{ year }}&month={{ month }}&next=1">
+      Next <i class="fas fa-chevron-right"></i>
+    </a>
+  </div>
+</div>
+
+<!-- ===== Info Note ===== -->
+<div class="mt-note fade-in">
+  <i class="fas fa-info-circle me-1"></i>
+  প্রতি employee এর <b>{{ month_name }}</b> এর target hours লিখে Save করুন। 
+  খালি রাখলে <b>auto-calculated</b> value (daily duty hours থেকে) ব্যবহার হবে।
+  Manual set করলে সেটাই priority পাবে।
+</div>
+
+<!-- ===== Form ===== -->
+<form method="post" class="mt-card fade-in">
+  {% csrf_token %}
+  <table>
+    <thead>
+      <tr>
+        <th>Employee</th>
+        <th>Auto Target</th>
+        <th>Manual Monthly Target</th>
+        <th>Remark (চ্ছিক)</th>
+        <th>State</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>
+          <div class="mt-emp-name">{{ r.emp.name }}</div>
+          <div class="mt-emp-id">{{ r.emp.emp_id }} • {{ r.emp.designation }}</div>
+        </td>
+        <td><span class="mt-auto">{{ r.auto_target }}h</span></td>
+        <td>
+          <input type="number" step="0.5" min="0" max="1000" name="hours_{{ r.emp.id }}"
+                 class="mt-hours-inp" value="{{ r.hours|floatformat:'-1' }}" placeholder="{{ r.auto_target }}">
+        </td>
+        <td>
+          <input type="text" name="remark_{{ r.emp.id }}" class="mt-remark-inp"
+                 value="{{ r.override.remark|default:'' }}" placeholder="যেমন: half month, special project...">
+        </td>
+        <td>
+          {% if r.custom %}<span class="mt-custom">✏️ Manual</span>
+          {% else %}<span class="mt-default">Auto</span>{% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" style="text-align:center;color:#9ca3af;padding:30px;">কোনো active employee নেই।</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div style="padding:14px 18px;border-top:1px solid var(--border);">
+    <button class="btn-gradient" type="submit" style="width:auto;padding:10px 26px;">
+      <i class="fas fa-save"></i> Save Monthly Targets
+    </button>
+  </div>
+</form>
+{% endblock %}

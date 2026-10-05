@@ -1,0 +1,351 @@
+{% extends "app_base.html" %}
+{% block page_title %}My Leave{% endblock %}
+
+{% block content %}
+<style>
+  .lv-form input, .lv-form textarea {
+    width: 100%; border: 1.5px solid var(--border); border-radius: 12px;
+    padding: 10px 13px; font-size: 13.5px; background: #fff; transition: all .18s;
+  }
+  .lv-form input:focus, .lv-form textarea:focus {
+    border-color: #818cf8; outline: none; box-shadow: 0 0 0 3px rgba(99,102,241,.12);
+  }
+  .lv-form input[type="file"] {
+    border: 2px dashed #c7d2fe; background: #f8f9ff; padding: 14px;
+    border-radius: 14px; cursor: pointer; font-size: 12.5px; color: #6b7280;
+  }
+  .lv-form input[type="file"]::file-selector-button {
+    border: none; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff;
+    padding: 8px 16px; border-radius: 10px; margin-right: 12px;
+    font-weight: 700; cursor: pointer; transition: all .2s;
+  }
+  .lv-form input[type="file"]:hover { border-color: #818cf8; background: #f0f2ff; }
+
+  .lv-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .lv-head-icon {
+    width: 46px; height: 46px; border-radius: 14px; flex-shrink: 0;
+    background: linear-gradient(135deg, #818cf8, #6366f1);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 17px; line-height: 1;
+    box-shadow: 0 6px 16px rgba(99,102,241,.28);
+  }
+
+  /* ===== Multi-date picker ===== */
+  .date-picker-box {
+    background: #f8faff; border: 1px solid #e0e7ff; border-radius: 14px;
+    padding: 14px; margin-bottom: 14px;
+  }
+  .date-picker-row { display: flex; gap: 8px; align-items: center; }
+  .date-picker-row input[type="date"] {
+    flex: 1; border: 1.5px solid var(--border); border-radius: 10px;
+    padding: 9px 12px; font-size: 13px; background: #fff;
+  }
+  .date-picker-row input[type="date"]:focus {
+    border-color: #818cf8; outline: none;
+  }
+  .add-date-btn {
+    padding: 9px 16px; border: none; border-radius: 10px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff;
+    font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap;
+    display: flex; align-items: center; gap: 6px;
+    box-shadow: 0 4px 10px rgba(99,102,241,.25); transition: all .18s;
+  }
+  .add-date-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(99,102,241,.35); }
+  .clear-dates-btn {
+    padding: 9px 12px; border: 1px solid #fecaca; border-radius: 10px;
+    background: #fef2f2; color: #b91c1c; font-size: 12px; font-weight: 700;
+    cursor: pointer; transition: all .18s;
+  }
+  .clear-dates-btn:hover { background: #fee2e2; }
+
+  .selected-dates {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;
+    min-height: 28px;
+  }
+  .date-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+    border: 1px solid #c7d2fe; border-radius: 20px;
+    padding: 5px 10px; font-size: 12px; font-weight: 700; color: #4338ca;
+    animation: chipIn .2s ease;
+  }
+  @keyframes chipIn {
+    from { opacity: 0; transform: scale(.8); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .date-chip .remove {
+    cursor: pointer; color: #b91c1c; font-weight: 900; font-size: 14px;
+    line-height: 1; padding: 0 2px;
+  }
+  .date-chip .remove:hover { color: #dc2626; }
+
+  .dates-summary {
+    margin-top: 10px; padding: 10px 12px; border-radius: 10px;
+    background: #ecfdf5; border: 1px solid #a7f3d0;
+    font-size: 12.5px; color: #047857; font-weight: 700;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .lv-item { padding: 14px 4px; border-bottom: 1px solid #f3f4f6; }
+  .lv-item:last-child { border-bottom: none; }
+  .lv-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .lv-dates { font-weight: 700; font-size: 13px; color: #111827; }
+  .lv-reason { font-size: 12px; color: #6b7280; margin-top: 3px; }
+  .lv-links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+  .lv-attach {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11.5px; font-weight: 700; color: #4338ca; background: #eef2ff;
+    padding: 4px 10px; border-radius: 8px; text-decoration: none;
+  }
+  .lv-attach:hover { background: #e0e7ff; text-decoration: none; }
+  .lv-pdf {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11.5px; font-weight: 700; color: #b91c1c; background: #fee2e2;
+    padding: 4px 10px; border-radius: 8px; text-decoration: none;
+  }
+  .lv-pdf:hover { background: #fecaca; text-decoration: none; }
+  .lv-reject-box {
+    margin-top: 8px; background: #fef2f2; border: 1px solid #fecaca;
+    border-radius: 10px; padding: 8px 12px; font-size: 12px; color: #b91c1c;
+  }
+  .multi-dates-list {
+    display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;
+  }
+  .mini-date {
+    background: #eef2ff; color: #4338ca; padding: 2px 8px; border-radius: 10px;
+    font-size: 11px; font-weight: 700;
+  }
+</style>
+
+{% if messages %}{% for m in messages %}
+<div class="alert {% if m.tags == 'error' %}alert-danger{% else %}alert-success{% endif %} py-2 small fade-in" style="border-radius:12px;">{{ m }}</div>
+{% endfor %}{% endif %}
+
+<div class="row g-3 fade-in">
+  <!-- ===== Apply Form ===== -->
+  <div class="col-md-5">
+    <form method="post" enctype="multipart/form-data" class="panel-card lv-form">
+      {% csrf_token %}
+
+      <div class="lv-head">
+        <div class="lv-head-icon"><i class="fas fa-calendar-plus"></i></div>
+        <div>
+          <div style="font-weight:800;font-size:15px;color:#111827;">Apply for Leave</div>
+          <div style="font-size:11.5px;color:#9ca3af;">Take a day or multiple days off</div>
+        </div>
+      </div>
+
+      <!-- Multi-date picker -->
+      <div class="date-picker-box">
+        <label class="form-label-light" style="margin-bottom:8px;">
+          <i class="fas fa-calendar-day me-1"></i> Select Dates
+        </label>
+        <div class="date-picker-row">
+          <input type="date" id="singleDate">
+          <button type="button" class="add-date-btn" id="addDateBtn">
+            <i class="fas fa-plus"></i> Add
+          </button>
+          <button type="button" class="clear-dates-btn" id="clearDatesBtn" style="display:none;">
+            <i class="fas fa-trash"></i> Clear
+          </button>
+        </div>
+        <div class="selected-dates" id="selectedDates"></div>
+        <div class="dates-summary" id="datesSummary" style="display:none;">
+          <i class="fas fa-check-circle"></i>
+          <span id="summaryText"></span>
+        </div>
+        <input type="hidden" name="leave_dates_json" id="leaveDatesJson" value="[]">
+      </div>
+
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="form-label-light">Reason</label>
+          {{ form.reason }}
+        </div>
+        <div class="col-12">
+          <label class="form-label-light">Attachment </label>
+          {{ form.attachment }}
+        </div>
+      </div>
+
+      {% if form.non_field_errors %}
+        <div style="color:#dc2626;font-size:11.5px;margin-top:8px;">{{ form.non_field_errors|striptags }}</div>
+      {% endif %}
+
+      <button class="btn-gradient mt-3" type="submit">
+        <i class="fas fa-paper-plane"></i> Submit Application
+      </button>
+    </form>
+  </div>
+
+  <!-- ===== My Applications ===== -->
+  <div class="col-md-7">
+    <div class="panel-card">
+      <div class="lv-head">
+        <div class="lv-head-icon" style="background:linear-gradient(135deg,#fcd34d,#f59e0b);"><i class="fas fa-history"></i></div>
+        <div>
+          <div style="font-weight:800;font-size:15px;color:#111827;">My Applications</div>
+          <div style="font-size:11.5px;color:#9ca3af;">List of leave application</div>
+        </div>
+      </div>
+
+      {% for lv in leaves %}
+      <div class="lv-item">
+        <div class="lv-top">
+          <div class="lv-dates">
+            <i class="fas fa-calendar-day me-1" style="color:#6366f1;"></i>
+            {% if lv.leave_dates %}
+              {{ lv.date_list|length }} day{{ lv.date_list|length|pluralize }}
+            {% else %}
+              {{ lv.from_date|date:"d M, Y" }} → {{ lv.to_date|date:"d M, Y" }}
+              <span class="badge-soft" style="background:#eef2ff;color:#4338ca;margin-left:6px;">{{ lv.days }} day{{ lv.days|pluralize }}</span>
+            {% endif %}
+          </div>
+          {% if lv.status == 'pending' %}
+            <span class="badge-soft" style="background:#fef3c7;color:#92400e;">⏳ Pending</span>
+          {% elif lv.status == 'approved' %}
+            <span class="badge-soft" style="background:#d1fae5;color:#047857;">✅ Approved</span>
+          {% else %}
+            <span class="badge-soft" style="background:#fee2e2;color:#b91c1c;">❌ Rejected</span>
+          {% endif %}
+        </div>
+
+        {% if lv.leave_dates %}
+          <div class="multi-dates-list">
+            {% for d in lv.date_list %}
+              <span class="mini-date">{{ d|date:"d M" }}</span>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <div class="lv-reason">{{ lv.reason|default:"No reason given" }}</div>
+        <div class="lv-links">
+          {% if lv.attachment %}
+            <a href="{{ lv.attachment.url }}" target="_blank" class="lv-attach">
+              <i class="fas fa-paperclip"></i> Attachment 
+            </a>
+          {% endif %}
+          <a href="{% url 'leave_application_pdf' lv.id %}" class="lv-pdf">
+            <i class="fas fa-file-pdf"></i> Application PDF
+          </a>
+        </div>
+        {% if lv.status == 'rejected' and lv.reject_reason %}
+          <div class="lv-reject-box">
+            <b><i class="fas fa-info-circle me-1"></i>Reject Beacuse of :</b> {{ lv.reject_reason }}
+          </div>
+        {% endif %}
+      </div>
+      {% empty %}
+      <div class="empty-note">No Leave Application</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<script>
+  // ===== Multi-date picker logic =====
+  const dateInput = document.getElementById('singleDate');
+  const addBtn = document.getElementById('addDateBtn');
+  const clearBtn = document.getElementById('clearDatesBtn');
+  const datesContainer = document.getElementById('selectedDates');
+  const summaryBox = document.getElementById('datesSummary');
+  const summaryText = document.getElementById('summaryText');
+  const jsonInput = document.getElementById('leaveDatesJson');
+
+  let selectedDates = [];
+
+  function formatDateLabel(dateStr) {
+    const d = new Date(dateStr);
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return `${d.getDate()} ${months[d.getMonth()]}`;
+  }
+
+  function renderDates() {
+    datesContainer.innerHTML = '';
+    selectedDates.sort();
+    selectedDates.forEach((date, idx) => {
+      const chip = document.createElement('span');
+      chip.className = 'date-chip';
+      chip.innerHTML = `<i class="fas fa-calendar-day"></i> ${formatDateLabel(date)} <span class="remove" data-idx="${idx}">&times;</span>`;
+      datesContainer.appendChild(chip);
+    });
+
+    // Remove handlers
+    datesContainer.querySelectorAll('.remove').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const idx = parseInt(e.target.dataset.idx);
+        selectedDates.splice(idx, 1);
+        renderDates();
+      });
+    });
+
+    // Update summary
+    if (selectedDates.length > 0) {
+      clearBtn.style.display = 'inline-flex';
+      summaryBox.style.display = 'flex';
+      summaryText.textContent = `${selectedDates.length} day${selectedDates.length > 1 ? 's' : ''} selected`;
+    } else {
+      clearBtn.style.display = 'none';
+      summaryBox.style.display = 'none';
+    }
+
+    jsonInput.value = JSON.stringify(selectedDates);
+  }
+
+  addBtn.addEventListener('click', () => {
+    const val = dateInput.value;
+    if (!val) {
+      alert('Please select a date first.');
+      return;
+    }
+    if (selectedDates.includes(val)) {
+      alert('This date is already added.');
+      return;
+    }
+    selectedDates.push(val);
+    dateInput.value = '';
+    renderDates();
+  });
+
+  clearBtn.addEventListener('click', () => {
+    if (confirm('Clear all selected dates?')) {
+      selectedDates = [];
+      renderDates();
+    }
+  });
+
+  // Enter key support
+  // Enter key support
+  dateInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addBtn.click();
+    }
+  });
+
+  // ===== Form submit এ from_date/to_date auto-fill করুন =====
+   // ===== Form submit handler =====
+  const form = document.querySelector('.lv-form');
+  
+  form.addEventListener('submit', function(e) {
+    if (selectedDates.length === 0) {
+      e.preventDefault();
+      alert('Atleast select One Day');
+      return false;
+    }
+
+    // from_date এবং to_date field খুঁজে fill করুন
+    const fromDateInput = document.getElementById('from_date');
+    const toDateInput = document.getElementById('to_date');
+
+    if (fromDateInput && toDateInput) {
+      // Sort dates
+      const sorted = [...selectedDates].sort();
+      fromDateInput.value = sorted[0];
+      toDateInput.value = sorted[sorted.length - 1];
+      
+      console.log('Auto-filled dates:', fromDateInput.value, 'to', toDateInput.value);
+    }
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends "app_base.html" %}
+{% block page_title %}My Attendance{% endblock %}
+
+{% block content %}
+<style>
+  .mojo-card { text-align: center; padding: 50px 30px; }
+  .mojo-icon {
+    width: 100px; height: 100px; border-radius: 50%; margin: 0 auto 20px;
+    background: linear-gradient(135deg, #fcd34d, #f59e0b);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 42px;
+    box-shadow: 0 12px 30px rgba(245,158,11,.3);
+  }
+  .mojo-title { font-size: 26px; font-weight: 800; color: #111827; margin-bottom: 8px; }
+  .mojo-sub { font-size: 14px; color: #6b7280; margin-bottom: 28px; }
+  .mojo-info {
+    background: #fef3c7; border: 1px solid #fcd34d; border-radius: 14px;
+    padding: 18px 22px; text-align: left; max-width: 440px; margin: 0 auto;
+  }
+  .mojo-info .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #fde68a; }
+  .mojo-info .row:last-child { border-bottom: none; }
+  .mojo-info .k { color: #92400e; font-weight: 700; font-size: 13px; }
+  .mojo-info .v { color: #111827; font-weight: 700; font-size: 13px; }
+</style>
+
+<div class="row g-3 fade-in">
+  <div class="col-md-6 offset-md-3">
+    <div class="panel-card mojo-card">
+      <div class="mojo-icon"><i class="fas fa-star"></i></div>
+      <div class="mojo-title">Hello, {{ emp.name }}!</div>
+      <div class="mojo-sub">You are in  <b>Mojo</b> group .No attendance </div>
+
+      <div class="mojo-info">
+        <div class="row">
+          <span class="k">Duty Group</span>
+          <span class="v">🌟 Mojo</span>
+        </div>
+        <div class="row">
+          <span class="k">Attendance</span>
+          <span class="v">Not Required</span>
+        </div>
+        <div class="row">
+          <span class="k">Duty Hours</span>
+          <span class="v">Flexible</span>
+        </div>
+        <div class="row">
+          <span class="k">Check In/Out</span>
+          <span class="v">Not Applicable</span>
+        </div>
+        <div class="row">
+          <span class="k">Leave Apply</span>
+          <span class="v" style="color:#059669;">✅ Available</span>
+        </div>
+      </div>
+
+      <div style="margin-top:24px;">
+        <a href="{% url 'my_leaves' %}" class="btn-gradient" style="text-decoration:none;">
+          <i class="fas fa-calendar-check"></i> Leave Apply if need.
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

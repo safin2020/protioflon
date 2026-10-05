@@ -1,0 +1,220 @@
+{% extends "app_base.html" %}
+{% block page_title %}Leave Requests{% endblock %}
+
+{% block content %}
+<style>
+  .lm-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+  }
+  .lm-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+  .lm-tab {
+    padding: 8px 16px; border-radius: 10px; font-size: 12.5px; font-weight: 700;
+    border: 1px solid var(--border); background: #fff; color: #4b5563;
+    text-decoration: none; transition: all .18s;
+  }
+  .lm-tab:hover { background: #f5f7ff; text-decoration: none; }
+  .lm-tab.on {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff;
+    border-color: transparent; box-shadow: 0 4px 12px rgba(99,102,241,.3);
+  }
+  .lm-count {
+    background: #fee2e2; color: #b91c1c; padding: 2px 8px; border-radius: 10px;
+    font-size: 10px; font-weight: 800; margin-left: 4px;
+  }
+  .lm-card {
+    background: #fff; border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); overflow-x: auto;
+  }
+  .lm-table { width: 100%; border-collapse: collapse; min-width: 1100px; }
+  .lm-table th {
+    background: #f8fafc; color: #64748b; font-size: 11px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .4px; padding: 12px 14px;
+    text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap;
+  }
+  .lm-table td {
+    padding: 14px; border-bottom: 1px solid #f3f4f6; font-size: 13px; color: #374151;
+    vertical-align: middle; white-space: nowrap;
+  }
+  .lm-table tr:last-child td { border-bottom: none; }
+  .lm-table tr:hover td { background: #f8faff; }
+  
+  .lm-emp { font-weight: 700; color: #111827; font-size: 14px; margin-bottom: 2px; }
+  .lm-emp-id { font-size: 11px; color: #9ca3af; }
+  .lm-dates { font-weight: 600; color: #111827; white-space: nowrap; }
+  .lm-days {
+    background: #eef2ff; color: #4338ca; padding: 4px 10px; border-radius: 12px;
+    font-size: 11.5px; font-weight: 700; display: inline-block;
+  }
+  .lm-reason { 
+    max-width: 200px; 
+    word-wrap: break-word; 
+    color: #6b7280; 
+    font-size: 12.5px;
+    white-space: normal;
+    line-height: 1.4;
+  }
+  .lm-attach {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: #e0e7ff; color: #4338ca; padding: 4px 10px; border-radius: 8px;
+    font-size: 11px; font-weight: 700; text-decoration: none; margin-top: 6px;
+  }
+  .lm-attach:hover { background: #c7d2fe; text-decoration: none; }
+  .lm-status {
+    padding: 6px 14px; border-radius: 12px; font-size: 11.5px; font-weight: 800;
+    display: inline-block; white-space: nowrap;
+  }
+  .lm-status.pending { background: #fef3c7; color: #92400e; }
+  .lm-status.approved { background: #d1fae5; color: #047857; }
+  .lm-status.rejected { background: #fee2e2; color: #b91c1c; }
+  .lm-applied { font-size: 12px; color: #6b7280; white-space: nowrap; }
+  
+  .lm-actions { 
+    display: flex; 
+    gap: 6px; 
+    align-items: center;
+    flex-wrap: nowrap;
+  }
+  .lm-btn {
+    padding: 6px 12px; border: none; border-radius: 8px; font-size: 11.5px;
+    font-weight: 700; cursor: pointer; transition: all .18s;
+    display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+  }
+  .lm-btn:hover { transform: translateY(-1px); }
+  .lm-approve { background: #d1fae5; color: #047857; }
+  .lm-approve:hover { background: #a7f3d0; }
+  .lm-reject { background: #fee2e2; color: #b91c1c; }
+  .lm-reject:hover { background: #fecaca; }
+  .lm-pdf {
+    background: #eef2ff; color: #4338ca; padding: 6px 10px; border-radius: 8px;
+    text-decoration: none; font-size: 11.5px; font-weight: 700;
+    display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .lm-pdf:hover { background: #e0e7ff; text-decoration: none; }
+  .lm-empty { text-align: center; padding: 40px; color: #9ca3af; }
+  
+  /* Column specific widths */
+  .col-employee { width: 18%; }
+  .col-dates { width: 12%; }
+  .col-days { width: 8%; }
+  .col-reason { width: 25%; }
+  .col-status { width: 12%; }
+  .col-applied { width: 10%; }
+  .col-action { width: 15%; }
+</style>
+
+<div class="lm-header fade-in">
+  <h4 style="margin:0;font-weight:800;color:#111827;"><i class="fas fa-calendar-check me-2" style="color:#6366f1;"></i>Leave Requests</h4>
+  <div class="lm-tabs">
+    <a class="lm-tab {% if status == 'pending' %}on{% endif %}" href="?status=pending">
+      Pending <span class="lm-count">{{ counts.pending }}</span>
+    </a>
+    <a class="lm-tab {% if status == 'approved' %}on{% endif %}" href="?status=approved">
+      Approved <span class="lm-count">{{ counts.approved }}</span>
+    </a>
+    <a class="lm-tab {% if status == 'rejected' %}on{% endif %}" href="?status=rejected">
+      Rejected <span class="lm-count">{{ counts.rejected }}</span>
+    </a>
+    <a class="lm-tab {% if status == 'all' %}on{% endif %}" href="?status=all">All</a>
+  </div>
+</div>
+
+<div class="lm-card fade-in">
+  <table class="lm-table">
+    <thead>
+      <tr>
+        <th class="col-employee">Employee</th>
+        <th class="col-dates">Dates</th>
+        <th class="col-days">Days</th>
+        <th class="col-reason">Reason / Attachment</th>
+        <th class="col-status">Status</th>
+        <th class="col-applied">Applied</th>
+        <th class="col-action">Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for lv in leaves %}
+      <tr>
+        <td>
+          <div class="lm-emp">{{ lv.employee.name }}</div>
+          <div class="lm-emp-id">{{ lv.employee.emp_id }} • {{ lv.employee.department }}</div>
+        </td>
+        <td>
+          <div class="lm-dates">
+            {% if lv.leave_dates %}
+              {{ lv.date_list|length }} days
+            {% else %}
+              {{ lv.from_date|date:"d M" }} → {{ lv.to_date|date:"d M" }}
+            {% endif %}
+          </div>
+          {% if lv.leave_dates %}
+            <div style="font-size:11px;color:#9ca3af;margin-top:4px;">
+              {% for d in lv.date_list|slice:":3" %}{{ d|date:"d M" }}{% if not forloop.last %}, {% endif %}{% endfor %}
+              {% if lv.date_list|length > 3 %}+{{ lv.date_list|length|add:"-3" }} more{% endif %}
+            </div>
+          {% endif %}
+        </td>
+        <td><span class="lm-days">{{ lv.days }}</span></td>
+        <td>
+          <div class="lm-reason">{{ lv.reason|default:"No reason provided"|truncatechars:80 }}</div>
+          {% if lv.attachment %}
+            <a href="{{ lv.attachment.url }}" target="_blank" class="lm-attach">
+              <i class="fas fa-paperclip"></i> Attachment
+            </a>
+          {% endif %}
+        </td>
+        <td>
+          <span class="lm-status {{ lv.status }}">
+            {% if lv.status == 'pending' %}⏳ Pending
+            {% elif lv.status == 'approved' %}✅ Approved
+            {% else %}❌ Rejected{% endif %}
+          </span>
+        </td>
+        <td class="lm-applied">{{ lv.created_at|date:"d M, y" }}</td>
+        <td>
+          <div class="lm-actions">
+            {% if lv.status == 'pending' %}
+              <form method="post" action="{% url 'leave_approve' lv.id %}" style="display:inline;">
+                {% csrf_token %}
+                <button class="lm-btn lm-approve" type="submit"><i class="fas fa-check"></i> Approve</button>
+              </form>
+              <button class="lm-btn lm-reject" onclick="document.getElementById('reject-{{ lv.id }}').style.display='block'">
+                <i class="fas fa-times"></i> Reject
+              </button>
+              
+              <div id="reject-{{ lv.id }}" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;">
+                <div style="background:#fff;padding:24px;border-radius:16px;max-width:400px;width:90%;">
+                  <h5 style="margin:0 0 12px;font-weight:800;color:#111827;">Reject Leave?</h5>
+                  <p style="font-size:12.5px;color:#6b7280;margin-bottom:12px;">Please provide a reason for rejection:</p>
+                  <form method="post" action="{% url 'leave_reject' lv.id %}">
+                    {% csrf_token %}
+                    <textarea name="reason" rows="3" required style="width:100%;border:1.5px solid var(--border);border-radius:10px;padding:10px;font-size:13px;margin-bottom:12px;" placeholder="Why rejecting this leave?"></textarea>
+                    <div style="display:flex;gap:8px;justify-content:flex-end;">
+                      <button type="button" class="lm-btn" onclick="document.getElementById('reject-{{ lv.id }}').style.display='none'" style="background:#f3f4f6;color:#4b5563;">Cancel</button>
+                      <button type="submit" class="lm-btn lm-reject"><i class="fas fa-times"></i> Reject</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            {% else %}
+              <span style="font-size:11px;color:#9ca3af;">—</span>
+            {% endif %}
+            <a href="{% url 'leave_application_pdf' lv.id %}" class="lm-pdf" target="_blank" title="Download PDF">
+              <i class="fas fa-file-pdf"></i>
+            </a>
+          </div>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="7" class="lm-empty">
+          <i class="fas fa-inbox" style="font-size:36px;color:#e5e7eb;display:block;margin-bottom:10px;"></i>
+          No leave requests found.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

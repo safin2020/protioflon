@@ -1,0 +1,187 @@
+{% extends "app_base.html" %}
+{% block page_title %}Content Log{% endblock %}
+
+{% block content %}
+{% now "Y-m-d" as today_str %}
+{% now "Y-m" as current_month %}
+<style>
+  .cl-bar {
+    background: #fff; border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 14px 18px; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  .cl-tab {
+    padding: 7px 16px; border-radius: 20px; font-size: 12.5px; font-weight: 700;
+    border: 1px solid var(--border); background: #fff; color: #4b5563; text-decoration: none;
+    transition: all .18s;
+  }
+  .cl-tab:hover { border-color: #fecaca; background: #fff5f5; text-decoration: none; }
+  .cl-tab.on { background: linear-gradient(135deg, #ef4444, #c62828); color: #fff; border-color: transparent; box-shadow: 0 4px 12px rgba(198,40,40,.3); }
+  .cl-inp {
+    border: 1.5px solid var(--border); border-radius: 10px; padding: 7px 10px;
+    font-size: 12.5px; background: #fff; color: #374151; transition: all .18s;
+  }
+  .cl-inp:focus { border-color: #f87171; outline: none; box-shadow: 0 0 0 3px rgba(239,68,68,.12); }
+  .cl-sep { width: 1px; height: 26px; background: var(--border); }
+  .cl-dl {
+    display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px;
+    border-radius: 10px; border: 2px solid; font-size: 12px; font-weight: 700;
+    text-decoration: none; transition: all .18s;
+  }
+  .cl-dl:hover { transform: translateY(-2px); text-decoration: none; }
+  .cl-dl-csv { color: #059669; border-color: #a7f3d0; background: #ecfdf5; }
+  .cl-dl-csv:hover { background: #d1fae5; }
+  .cl-dl-pdf { color: #c62828; border-color: #fecaca; background: #fef2f2; }
+  .cl-dl-pdf:hover { background: #fee2e2; }
+  .cl-add {
+    display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px;
+    border-radius: 10px; background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff; font-size: 12.5px; font-weight: 700; text-decoration: none;
+    box-shadow: 0 4px 12px rgba(99,102,241,.3); transition: all .18s;
+  }
+  .cl-add:hover { transform: translateY(-2px); box-shadow: 0 7px 16px rgba(99,102,241,.4); text-decoration: none; }
+
+  .cl-sheet { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow-x: auto; }
+  .cl-sheet table { width: 100%; border-collapse: collapse; min-width: 1100px; }
+  .cl-sheet th {
+    background: #c62828; color: #fff; font-size: 11px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .4px; padding: 10px 10px;
+    text-align: left; border: 1px solid #b71c1c;
+  }
+  .cl-sheet td { padding: 9px 10px; font-size: 12.5px; color: #374151; border: 1px solid #e5e7eb; vertical-align: top; }
+  .cl-sheet tbody tr:nth-child(even) { background: #fff8e1; }
+  .cl-sheet tbody tr:hover { background: #ffebee; }
+  .cl-sl { font-weight: 800; color: #c62828; text-align: center; }
+  .cl-title { font-weight: 600; color: #111827; max-width: 320px; }
+  .st-up { background: #d1fae5; color: #047857; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 800; }
+  .st-ed { background: #ffccbc; color: #bf360c; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 800; }
+  .st-ot { background: #e5e7eb; color: #374151; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 800; }
+  .cl-edit {
+    color: #4338ca; background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 8px;
+    padding: 4px 9px; font-size: 11px; font-weight: 700; text-decoration: none;
+  }
+  .cl-edit:hover { background: #e0e7ff; text-decoration: none; }
+</style>
+
+{% if messages %}{% for m in messages %}
+<div class="alert {% if m.tags == 'error' %}alert-danger{% else %}alert-success{% endif %} py-2 small fade-in" style="border-radius:12px;">{{ m }}</div>
+{% endfor %}{% endif %}
+
+<!-- ===== Filter / Calendar Bar ===== -->
+<form method="get" class="cl-bar fade-in">
+  <a class="cl-tab {% if fl.mode != 'monthly' %}on{% endif %}"
+     href="?mode=daily&date={{ fl.date|default:today_str }}&category={{ fl.category }}&item_type={{ fl.item_type }}&reporter={{ fl.reporter }}&editor={{ fl.editor }}&panel={{ fl.panel }}&status={{ fl.status }}">
+    📅 Daily
+  </a>
+  <a class="cl-tab {% if fl.mode == 'monthly' %}on{% endif %}"
+     href="?mode=monthly&month={{ fl.month|default:current_month }}&category={{ fl.category }}&item_type={{ fl.item_type }}&reporter={{ fl.reporter }}&editor={{ fl.editor }}&panel={{ fl.panel }}&status={{ fl.status }}">
+    🗓️ Monthly
+  </a>
+
+  <div class="cl-sep"></div>
+
+  {% if fl.mode == 'monthly' %}
+    <input type="month" name="month" class="cl-inp" value="{{ fl.month|default:current_month }}" onchange="this.form.submit()">
+  {% else %}
+    <input type="date" name="date" class="cl-inp" value="{{ fl.date|default:today_str }}" onchange="this.form.submit()">
+  {% endif %}
+  <input type="hidden" name="mode" value="{{ fl.mode }}">
+
+  <select name="category" class="cl-inp" onchange="this.form.submit()">
+    <option value=""> Category</option>
+    {% for o in opts.category %}<option value="{{ o.id }}" {% if fl.category == o.id|stringformat:"s" %}selected{% endif %}>{{ o.name }}</option>{% endfor %}
+  </select>
+  <select name="item_type" class="cl-inp" onchange="this.form.submit()">
+    <option value=""> Item Type</option>
+    {% for o in opts.item_type %}<option value="{{ o.id }}" {% if fl.item_type == o.id|stringformat:"s" %}selected{% endif %}>{{ o.name }}</option>{% endfor %}
+  </select>
+  <select name="reporter" class="cl-inp" onchange="this.form.submit()">
+    <option value=""> Reporter</option>
+    {% for o in opts.reporter %}<option value="{{ o.id }}" {% if fl.reporter == o.id|stringformat:"s" %}selected{% endif %}>{{ o.name }}</option>{% endfor %}
+  </select>
+  <select name="editor" class="cl-inp" onchange="this.form.submit()">
+    <option value=""> Editor</option>
+    {% for o in opts.editor %}<option value="{{ o.id }}" {% if fl.editor == o.id|stringformat:"s" %}selected{% endif %}>{{ o.name }}</option>{% endfor %}
+  </select>
+  <select name="panel" class="cl-inp" onchange="this.form.submit()">
+    <option value=""> Panel</option>
+    {% for o in opts.panel %}<option value="{{ o.id }}" {% if fl.panel == o.id|stringformat:"s" %}selected{% endif %}>{{ o.name }}</option>{% endfor %}
+  </select>
+  <select name="status" class="cl-inp" onchange="this.form.submit()">
+    <option value=""> Status</option>
+    {% for o in opts.status %}<option value="{{ o.id }}" {% if fl.status == o.id|stringformat:"s" %}selected{% endif %}>{{ o.name }}</option>{% endfor %}
+  </select>
+
+  <div style="margin-left:auto;display:flex;gap:8px;">
+    <a class="cl-dl cl-dl-csv" href="{% url 'content_log_csv' %}?mode={{ fl.mode }}&date={{ fl.date }}&month={{ fl.month }}&category={{ fl.category }}&item_type={{ fl.item_type }}&reporter={{ fl.reporter }}&editor={{ fl.editor }}&panel={{ fl.panel }}&status={{ fl.status }}">
+      <i class="fas fa-file-csv"></i> CSV
+    </a>
+    <a class="cl-dl cl-dl-pdf" href="{% url 'content_log_pdf' %}?mode={{ fl.mode }}&date={{ fl.date }}&month={{ fl.month }}&category={{ fl.category }}&item_type={{ fl.item_type }}&reporter={{ fl.reporter }}&editor={{ fl.editor }}&panel={{ fl.panel }}&status={{ fl.status }}">
+      <i class="fas fa-file-pdf"></i> PDF
+    </a>
+    <a class="cl-add" href="{% url 'content_log_add' %}"><i class="fas fa-plus"></i> Add Log</a>
+  </div>
+</form>
+
+<!-- ===== Sheet ===== -->
+<div class="fade-in mb-2" style="font-weight:800;font-size:15px;color:#111827;">
+  <i class="fas fa-clipboard-list me-1" style="color:#c62828;"></i>
+  {% if fl.mode == 'monthly' %}Monthly Log Sheet — {{ period }}{% else %}Daily Log Sheet — {{ period }}{% endif %}
+  <span style="font-size:12px;color:#9ca3af;font-weight:600;">({{ rows|length }}  entry)</span>
+</div>
+
+<div class="cl-sheet fade-in">
+  <table>
+    <thead>
+      <tr>
+        <th style="width:40px;text-align:center;">SL.</th>
+        <th>Content Title</th>
+        <th>Category</th>
+        <th>Assist (Mojo)</th>
+        <th>Item Type</th>
+        <th>C-P</th>
+        <th>Reporter Name</th>
+        <th>Editors</th>
+        <th>Panel</th>
+        <th>Status</th>
+        <th>Date & Time</th>
+        <th>Remark</th>
+        <th style="width:60px;text-align:center;">Edit</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td class="cl-sl">{{ r.sl }}</td>
+        <td class="cl-title">{{ r.log.content_title|default:"-" }}</td>
+        <td>{{ r.log.category.name|default:"-" }}</td>
+        <td>{{ r.log.assist.name|default:"-" }}</td>
+        <td>{{ r.log.item_type.name|default:"-" }}</td>
+        <td>{{ r.log.cp.name|default:"-" }}</td>
+        <td>{{ r.log.reporter.name|default:"-" }}</td>
+        <td>{{ r.log.editor.name|default:"-" }}</td>
+        <td>{{ r.log.panel.name|default:"-" }}</td>
+        <td>
+          {% if not r.log.status %}-
+          {% elif 'pload' in r.log.status.name %}<span class="st-up">{{ r.log.status.name }}</span>
+          {% elif 'dit' in r.log.status.name %}<span class="st-ed">{{ r.log.status.name }}</span>
+          {% else %}<span class="st-ot">{{ r.log.status.name }}</span>{% endif %}
+        </td>
+        <td style="white-space:nowrap;font-size:11.5px;">{{ r.log.log_date|date:"d M, y"|default:"-" }}<br>{{ r.log.log_time|time:"h:i A" }}</td>
+        <td style="font-size:11.5px;color:#6b7280;">{{ r.log.remark|default:"-" }}</td>
+        <td style="text-align:center;">
+          <a class="cl-edit" href="{% url 'content_log_edit' r.log.id %}"><i class="fas fa-pen"></i></a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="13" style="text-align:center;padding:40px;color:#9ca3af;">
+          <i class="fas fa-inbox" style="font-size:30px;color:#e5e7eb;display:block;margin-bottom:8px;"></i>
+           <b>+ Add Log</b> 
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,251 @@
+{% extends "app_base.html" %}
+{% block page_title %}Attendance Reports{% endblock %}
+
+{% block content %}
+<style>
+  .ar-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+  }
+  .ar-header h4 { margin: 0; font-weight: 800; color: #111827; }
+  .ar-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+  .ar-tab {
+    padding: 8px 16px; border-radius: 10px; font-size: 12.5px; font-weight: 700;
+    border: 1px solid var(--border); background: #fff; color: #4b5563;
+    text-decoration: none; transition: all .18s;
+  }
+  .ar-tab:hover { background: #f5f7ff; text-decoration: none; }
+  .ar-tab.on {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff;
+    border-color: transparent; box-shadow: 0 4px 12px rgba(99,102,241,.3);
+  }
+  .ar-filter { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .ar-filter input, .ar-filter select {
+    border: 1.5px solid var(--border); border-radius: 10px; padding: 8px 12px;
+    font-size: 12.5px; background: #fff; color: #374151;
+  }
+  .ar-filter input:focus, .ar-filter select:focus {
+    border-color: #818cf8; outline: none; box-shadow: 0 0 0 3px rgba(99,102,241,.12);
+  }
+  .ar-dl {
+    padding: 7px 14px; border-radius: 10px; border: 2px solid; font-size: 12px; font-weight: 700;
+    text-decoration: none; transition: all .18s; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .ar-dl:hover { transform: translateY(-2px); text-decoration: none; }
+  .ar-dl-csv { color: #059669; border-color: #a7f3d0; background: #ecfdf5; }
+  .ar-dl-csv:hover { background: #d1fae5; }
+  .ar-dl-pdf { color: #c62828; border-color: #fecaca; background: #fef2f2; }
+  .ar-dl-pdf:hover { background: #fee2e2; }
+
+  .ar-stats {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px; margin-bottom: 20px;
+  }
+  .ar-stat {
+    background: #fff; border: 1px solid var(--border); border-radius: 14px;
+    padding: 14px; text-align: center; box-shadow: var(--shadow);
+  }
+  .ar-stat .val { font-size: 24px; font-weight: 800; color: #111827; }
+  .ar-stat .lbl { font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; margin-top: 2px; }
+
+  .ar-card {
+    background: #fff; border: 1px solid var(--border); border-radius: 14px;
+    box-shadow: var(--shadow); overflow-x: auto; margin-bottom: 20px;
+  }
+  .ar-card table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+  .ar-card th {
+    background: #f8fafc; color: #64748b; font-size: 11px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .4px; padding: 12px 14px; text-align: left;
+    border-bottom: 1px solid var(--border); white-space: nowrap;
+  }
+  .ar-card td {
+    padding: 12px 14px; border-bottom: 1px solid #f3f4f6; font-size: 13px; color: #374151;
+    vertical-align: middle;
+  }
+  .ar-card tr:last-child td { border-bottom: none; }
+  .ar-card tr:hover td { background: #f8faff; }
+
+  .badge-present { background: #d1fae5; color: #047857; padding: 4px 10px; border-radius: 12px; font-size: 11.5px; font-weight: 800; display: inline-block; }
+  .badge-wfh { background: #e0e7ff; color: #4338ca; padding: 4px 10px; border-radius: 12px; font-size: 11.5px; font-weight: 800; display: inline-block; }
+  .badge-absent { background: #fee2e2; color: #b91c1c; padding: 4px 10px; border-radius: 12px; font-size: 11.5px; font-weight: 800; display: inline-block; }
+  .badge-off { background: #ffedd5; color: #c2410c; padding: 4px 10px; border-radius: 12px; font-size: 11.5px; font-weight: 800; display: inline-block; }
+  .badge-leave { background: #f3f4f6; color: #4b5563; padding: 4px 10px; border-radius: 12px; font-size: 11.5px; font-weight: 800; display: inline-block; }
+  .badge-ot { background: #dbeafe; color: #1d4ed8; padding: 4px 10px; border-radius: 12px; font-size: 11.5px; font-weight: 800; display: inline-block; }
+  .badge-remaining { background: #fef3c7; color: #92400e; padding: 4px 10px; border-radius: 12px; font-size: 11.5px; font-weight: 800; display: inline-block; }
+  .badge-done { background: #d1fae5; color: #047857; padding: 4px 10px; border-radius: 12px; font-size: 11.5px; font-weight: 800; display: inline-block; }
+
+  .ar-emp { font-weight: 700; color: #111827; }
+  .ar-emp-id { font-size: 11px; color: #6366f1; font-weight: 700; }
+  .ar-emp-desig { font-size: 11px; color: #9ca3af; }
+</style>
+
+<!-- ===== Header ===== -->
+<div class="ar-header fade-in">
+  <h4><i class="fas fa-chart-bar me-2" style="color:#6366f1;"></i>Attendance Reports</h4>
+  <div class="ar-tabs">
+    <a class="ar-tab {% if view_type == 'daily' %}on{% endif %}" href="?type=daily&date={{ day|date:'Y-m-d' }}{% if emp_id %}&emp={{ emp_id }}{% endif %}">
+      <i class="fas fa-calendar-day"></i> Daily
+    </a>
+    <a class="ar-tab {% if view_type == 'monthly' %}on{% endif %}" href="?type=monthly&month={{ year }}-{{ month|stringformat:'02d' }}{% if emp_id %}&emp={{ emp_id }}{% endif %}">
+      <i class="fas fa-calendar-alt"></i> Monthly
+    </a>
+  </div>
+</div>
+
+{% if view_type == 'daily' %}
+<!-- ===== Daily Filter ===== -->
+<form method="get" class="ar-filter fade-in" style="margin-bottom:16px;">
+  <input type="hidden" name="type" value="daily">
+  <input type="date" name="date" value="{{ day|date:'Y-m-d' }}" onchange="this.form.submit()">
+  <select name="emp" onchange="this.form.submit()">
+    <option value="">All Employees</option>
+    {% for e in employees %}
+      <option value="{{ e.id }}" {% if emp_id == e.id|stringformat:"s" %}selected{% endif %}>{{ e.name }}</option>
+    {% endfor %}
+  </select>
+  <a class="ar-dl ar-dl-csv" href="{% url 'download_csv' %}?type=daily&date={{ day|date:'Y-m-d' }}{% if emp_id %}&emp={{ emp_id }}{% endif %}">
+    <i class="fas fa-file-csv"></i> CSV
+  </a>
+  <a class="ar-dl ar-dl-pdf" href="{% url 'download_pdf' %}?type=daily&date={{ day|date:'Y-m-d' }}{% if emp_id %}&emp={{ emp_id }}{% endif %}">
+    <i class="fas fa-file-pdf"></i> PDF
+  </a>
+</form>
+
+<!-- ===== Daily Stats ===== -->
+<div class="ar-stats fade-in">
+  <div class="ar-stat"><div class="val">{{ counts.total }}</div><div class="lbl">Total</div></div>
+  <div class="ar-stat"><div class="val" style="color:#059669;">{{ counts.present }}</div><div class="lbl">Present</div></div>
+  <div class="ar-stat"><div class="val" style="color:#4338ca;">{{ counts.wfh }}</div><div class="lbl">WFH</div></div>
+  <div class="ar-stat"><div class="val" style="color:#b91c1c;">{{ counts.absent }}</div><div class="lbl">Absent</div></div>
+  <div class="ar-stat"><div class="val" style="color:#c2410c;">{{ counts.off }}</div><div class="lbl">Off</div></div>
+  <div class="ar-stat"><div class="val" style="color:#6b7280;">{{ counts.leave }}</div><div class="lbl">Leave</div></div>
+</div>
+
+<!-- ===== Daily Table ===== -->
+<div class="ar-card fade-in">
+  <table>
+    <thead>
+      <tr>
+        <th>Employee</th>
+        <th>Status</th>
+        <th>Check In</th>
+        <th>Check Out</th>
+        <th>Worked</th>
+        <th>Overtime</th>
+        <th>Remaining</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>
+          <div class="ar-emp-id">{{ r.emp.emp_id }}</div>
+          <div class="ar-emp">{{ r.emp.name }}</div>
+          <div class="ar-emp-desig">{{ r.emp.designation }}</div>
+        </td>
+        <td>
+          {% if r.att %}
+            {% if r.att.status == 'present' %}<span class="badge-present">Present</span>
+            {% elif r.att.status == 'wfh' %}<span class="badge-wfh">WFH</span>
+            {% elif r.att.status == 'absent' %}<span class="badge-absent">Absent</span>
+            {% else %}<span class="badge-off">Off</span>{% endif %}
+          {% else %}
+            {% if r.leave %}<span class="badge-leave">On Leave</span>
+            {% else %}<span class="badge-leave">No Record</span>{% endif %}
+          {% endif %}
+        </td>
+        <td>{% if r.att and r.att.check_in %}{{ r.att.check_in|time:"h:i A" }}{% else %}-{% endif %}</td>
+        <td>{% if r.att and r.att.check_out %}{{ r.att.check_out|time:"h:i A" }}{% else %}-{% endif %}</td>
+        <td><strong>{{ r.worked_str }}</strong></td>
+        <td>{% if r.ot_str != '-' %}<span class="badge-ot">{{ r.ot_str }}</span>{% else %}-{% endif %}</td>
+        <td>{% if r.rem_str == 'Done' %}<span class="badge-done">Done ✓</span>{% else %}{{ r.rem_str }}{% endif %}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" style="text-align:center;padding:30px;color:#9ca3af;">No data</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% else %}
+<!-- ===== Monthly Filter ===== -->
+<form method="get" class="ar-filter fade-in" style="margin-bottom:16px;">
+  <input type="hidden" name="type" value="monthly">
+  <input type="month" name="month" value="{{ year }}-{{ month|stringformat:'02d' }}" onchange="this.form.submit()">
+  <select name="emp" onchange="this.form.submit()">
+    <option value="">All Employees</option>
+    {% for e in employees %}
+      <option value="{{ e.id }}" {% if emp_id == e.id|stringformat:"s" %}selected{% endif %}>{{ e.name }}</option>
+    {% endfor %}
+  </select>
+  <a class="ar-dl ar-dl-csv" href="{% url 'download_csv' %}?type=monthly&month={{ year }}-{{ month|stringformat:'02d' }}{% if emp_id %}&emp={{ emp_id }}{% endif %}">
+    <i class="fas fa-file-csv"></i> CSV
+  </a>
+  <a class="ar-dl ar-dl-pdf" href="{% url 'download_pdf' %}?type=monthly&month={{ year }}-{{ month|stringformat:'02d' }}{% if emp_id %}&emp={{ emp_id }}{% endif %}">
+    <i class="fas fa-file-pdf"></i> PDF
+  </a>
+</form>
+
+<!-- ===== Monthly Table ===== -->
+<div class="ar-card fade-in">
+  <div style="padding:16px 18px;border-bottom:1px solid var(--border);">
+    <h5 style="margin:0;font-weight:800;color:#111827;">
+      <i class="fas fa-calendar-alt me-2" style="color:#6366f1;"></i>
+      Monthly Summary — {{ month_name }}
+    </h5>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Emp ID</th>
+        <th>Name</th>
+        <th>Designation</th>
+        <th>Present</th>
+        <th>WFH</th>
+        <th>Absent</th>
+        <th>Off</th>
+        <th>Leave</th>
+        <th>Total Hours</th>
+        <th>Target Hours</th>
+        <th>Overtime</th>
+        <th>Remaining</th>
+        <th>Working Days</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td><strong class="ar-emp-id">{{ r.emp.emp_id }}</strong></td>
+        <td class="ar-emp">{{ r.emp.name }}</td>
+        <td class="ar-emp-desig">{{ r.emp.designation }}</td>
+        <td><span class="badge-present">{{ r.stats.present }}</span></td>
+        <td><span class="badge-wfh">{{ r.stats.wfh }}</span></td>
+        <td><span class="badge-absent">{{ r.stats.absent }}</span></td>
+        <td><span class="badge-off">{{ r.stats.off }}</span></td>
+        <td><span class="badge-leave">{{ r.stats.leave }}</span></td>
+        <td><strong>{{ r.stats.total_hours }}h</strong></td>
+        <td style="color:#6b7280;">{{ r.stats.total_target }}h</td>
+        <td>
+          {% if r.stats.total_ot > 0 %}
+            <span class="badge-ot">+{{ r.stats.total_ot }}h</span>
+          {% else %}
+            <span style="color:#9ca3af;">—</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if r.stats.remaining > 0 %}
+            <span class="badge-remaining">{{ r.stats.remaining }}h</span>
+          {% else %}
+            <span class="badge-done">Done ✓</span>
+          {% endif %}
+        </td>
+        <td>{{ r.stats.total_days }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="13" style="text-align:center;padding:30px;color:#9ca3af;">No data</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

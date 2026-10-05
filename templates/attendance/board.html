@@ -1,0 +1,209 @@
+{% extends "app_base.html" %}
+{% block page_title %}Attendance Board{% endblock %}
+
+{% block content %}
+<style>
+  .ab-bar {
+    background: #fff; border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 14px 18px; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .ab-date {
+    border: 1.5px solid var(--border); border-radius: 10px; padding: 8px 12px;
+    font-size: 13px; background: #fff; color: #374151;
+  }
+  .ab-date:focus { border-color: #818cf8; outline: none; box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
+  .ab-stats { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .ab-stat {
+    flex: 1; min-width: 100px; background: #fff; border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px; text-align: center; box-shadow: var(--shadow);
+  }
+  .ab-stat .val { font-size: 22px; font-weight: 800; color: #111827; }
+  .ab-stat .lbl { font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; margin-top: 2px; }
+  .ab-stat.present .val { color: #059669; }
+  .ab-stat.wfh .val { color: #4338ca; }
+  .ab-stat.absent .val { color: #dc2626; }
+  .ab-stat.off .val { color: #d97706; }
+  .ab-stat.live .val { color: #0891b2; }
+
+  .ab-sheet { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow-x: auto; }
+  .ab-sheet table { width: 100%; border-collapse: collapse; min-width: 900px; }
+  .ab-sheet th {
+    background: #f8fafc; color: #64748b; font-size: 11px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .4px; padding: 10px 14px; text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .ab-sheet td { padding: 10px 14px; border-bottom: 1px solid #f3f4f6; font-size: 13px; color: #374151; vertical-align: middle; }
+  .ab-sheet tr:last-child td { border-bottom: none; }
+  .ab-sheet tr:hover td { background: #f8faff; }
+  
+  .ab-emp { display: flex; align-items: center; gap: 10px; }
+  .ab-av {
+    width: 36px; height: 36px; border-radius: 50%; background: #eef2ff; color: #4338ca;
+    display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px;
+  }
+  .ab-name { font-weight: 700; color: #111827; font-size: 13px; }
+  .ab-desig { font-size: 11px; color: #9ca3af; }
+  
+  .ab-time { font-weight: 700; color: #111827; font-size: 13px; white-space: nowrap; }
+  .ab-hrs { font-size: 12px; color: #4338ca; font-weight: 700; background: #eef2ff; padding: 3px 8px; border-radius: 8px; display: inline-block; }
+  
+  .ab-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .ab-btn {
+    padding: 6px 12px; border: none; border-radius: 8px; font-size: 11.5px; font-weight: 700;
+    cursor: pointer; transition: all .18s; display: inline-flex; align-items: center; gap: 4px;
+  }
+  .ab-btn:hover { transform: translateY(-1px); }
+  .ab-in { background: #d1fae5; color: #047857; }
+  .ab-in:hover { background: #a7f3d0; }
+  .ab-out { background: #fee2e2; color: #b91c1c; }
+  .ab-out:hover { background: #fecaca; }
+  .ab-wfh { background: #e0e7ff; color: #4338ca; }
+  .ab-wfh:hover { background: #c7d2fe; }
+  .ab-abs { background: #fef3c7; color: #92400e; }
+  .ab-abs:hover { background: #fde68a; }
+  .ab-off { background: #f3f4f6; color: #4b5563; }
+  .ab-off:hover { background: #e5e7eb; }
+  .ab-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  
+  .st-badge {
+    padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 800;
+    display: inline-block;
+  }
+  .st-present { background: #d1fae5; color: #047857; }
+  .st-wfh { background: #e0e7ff; color: #4338ca; }
+  .st-absent { background: #fee2e2; color: #b91c1c; }
+  .st-off { background: #f3f4f6; color: #4b5563; }
+</style>
+
+{% if messages %}{% for m in messages %}
+<div class="alert {% if m.tags == 'error' %}alert-danger{% else %}alert-success{% endif %} py-2 small fade-in" style="border-radius:12px;">{{ m }}</div>
+{% endfor %}{% endif %}
+
+<!-- ===== Filter Bar ===== -->
+<form method="get" class="ab-bar fade-in">
+  <span style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;">Date:</span>
+  <input type="date" name="date" class="ab-date" value="{{ day|date:'Y-m-d' }}" onchange="this.form.submit()">
+  <a href="{% url 'attendance_alerts' %}?date={{ day|date:'Y-m-d' }}" class="ab-btn ab-abs" style="margin-left:auto;">
+    <i class="fas fa-exclamation-triangle"></i> Alerts ({{ counts.alerts }})
+  </a>
+</form>
+
+<!-- ===== Stats ===== -->
+<div class="ab-stats fade-in">
+  <div class="ab-stat present"><div class="val">{{ counts.present }}</div><div class="lbl">Present</div></div>
+  <div class="ab-stat wfh"><div class="val">{{ counts.wfh }}</div><div class="lbl">WFH</div></div>
+  <div class="ab-stat absent"><div class="val">{{ counts.absent }}</div><div class="lbl">Absent</div></div>
+  <div class="ab-stat off"><div class="val">{{ counts.off }}</div><div class="lbl">Off Day</div></div>
+  <div class="ab-stat live"><div class="val">{{ counts.live }}</div><div class="lbl">Live Now</div></div>
+  <div class="ab-stat"><div class="val" style="color:#92400e;">{{ counts.leave }}</div><div class="lbl">On Leave</div></div>
+</div>
+
+<!-- ===== Sheet ===== -->
+<div class="ab-sheet fade-in">
+  <table>
+    <thead>
+      <tr>
+        <th>Employee</th>
+        <th>Status</th>
+        <th>Check In</th>
+        <th>Check Out</th>
+        <th>Worked</th>
+        <th>Target</th>
+        <th>Remaining / OT</th>
+        <th style="text-align:right;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>
+          <div class="ab-emp">
+            <div class="ab-av">
+              {% if r.emp.photo %}
+                <img src="{{ r.emp.photo.url }}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" alt="">
+              {% else %}
+                {{ r.emp.name|slice:":2"|upper }}
+              {% endif %}
+            </div>
+            <div>
+              <div class="ab-name">{{ r.emp.name }}</div>
+              <div class="ab-desig">{{ r.emp.emp_id }} • {{ r.emp.designation }}</div>
+            </div>
+          </div>
+        </td>
+        <td>
+          {% if r.att %}
+            {% if r.att.status == 'present' %}<span class="st-badge st-present">Present</span>
+            {% elif r.att.status == 'wfh' %}<span class="st-badge st-wfh">WFH</span>
+            {% elif r.att.status == 'absent' %}<span class="st-badge st-absent">Absent</span>
+            {% else %}<span class="st-badge st-off">Off</span>{% endif %}
+          {% else %}
+            <span class="st-badge" style="background:#f3f4f6;color:#9ca3af;">No Record</span>
+          {% endif %}
+        </td>
+        <td class="ab-time">{% if r.att and r.att.check_in %}{{ r.att.check_in|time:"h:i A" }}{% else %}-{% endif %}</td>
+        <td class="ab-time">{% if r.att and r.att.check_out %}{{ r.att.check_out|time:"h:i A" }}{% else %}-{% endif %}</td>
+        <td>{% if r.att and r.att.check_in %}<span class="ab-hrs">{{ r.worked_str }}</span>{% else %}-{% endif %}</td>
+        <td><span class="ab-hrs" style="background:#f3f4f6;color:#4b5563;">{{ r.target_str }}</span></td>
+        <td>
+          {% if r.att and r.att.check_in %}
+            {% if r.ot_str != '-' %}
+              <span style="color:#059669;font-weight:700;font-size:12px;">OT: {{ r.ot_str }}</span>
+            {% else %}
+              <span style="color:#d97706;font-weight:700;font-size:12px;">Rem: {{ r.rem_str }}</span>
+            {% endif %}
+          {% else %}
+            -
+          {% endif %}
+        </td>
+        <td style="text-align:right;">
+          <div class="ab-actions">
+            {% if not r.att or r.att.status == 'present' and not r.att.check_in %}
+              <form method="post" action="{% url 'stamp' r.emp.id 'in' %}" style="display:inline;">
+                {% csrf_token %}
+                <button class="ab-btn ab-in" type="submit"><i class="fas fa-sign-in-alt"></i> In</button>
+              </form>
+            {% elif r.att and r.att.status == 'present' and r.att.check_in and not r.att.check_out %}
+              <form method="post" action="{% url 'stamp' r.emp.id 'out' %}" style="display:inline;">
+                {% csrf_token %}
+                <button class="ab-btn ab-out" type="submit"><i class="fas fa-sign-out-alt"></i> Out</button>
+              </form>
+            {% endif %}
+
+            {% if not r.att %}
+              <form method="post" action="{% url 'mark_status' r.emp.id %}" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="status" value="wfh">
+                <button class="ab-btn ab-wfh" type="submit">WFH</button>
+              </form>
+              <form method="post" action="{% url 'mark_status' r.emp.id %}" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="status" value="absent">
+                <button class="ab-btn ab-abs" type="submit">Absent</button>
+              </form>
+              <form method="post" action="{% url 'mark_status' r.emp.id %}" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="status" value="off">
+                <button class="ab-btn ab-off" type="submit">Off</button>
+              </form>
+            {% elif r.att.status == 'wfh' %}
+              <form method="post" action="{% url 'mark_wfh_present' r.emp.id %}" style="display:inline;">
+                {% csrf_token %}
+                <button class="ab-btn ab-in" type="submit"><i class="fas fa-check"></i> Mark Present</button>
+              </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="8" style="text-align:center;padding:40px;color:#9ca3af;">
+          কোনো active employee পাওয়া যায়নি।
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

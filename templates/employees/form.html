@@ -1,0 +1,195 @@
+{% extends "app_base.html" %}
+{% block page_title %}{% if emp %}Edit Employee{% else %}Add Employee{% endif %}{% endblock %}
+
+{% block content %}
+<style>
+  .emp-form input, .emp-form select, .emp-form textarea {
+    width: 100%; border: 1.5px solid var(--border); border-radius: 12px;
+    padding: 9px 13px; font-size: 13.5px; background: #fff; transition: all .18s;
+  }
+  .emp-form input:focus, .emp-form select:focus, .emp-form textarea:focus {
+    border-color: #818cf8; outline: none; box-shadow: 0 0 0 3px rgba(99,102,241,.12);
+  }
+  .nid-section {
+    background: #f8faff; border: 1px solid #e0e7ff; border-radius: 14px;
+    padding: 16px; margin-top: 8px;
+  }
+  .nid-section-title {
+    font-size: 12px; font-weight: 700; color: #6366f1;
+    text-transform: uppercase; letter-spacing: .5px; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .nid-grid {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
+  }
+  .nid-box {
+    background: #fff; border: 1.5px solid var(--border); border-radius: 10px;
+    padding: 10px;
+  }
+  .nid-box label {
+    display: block; font-size: 10.5px; font-weight: 700; color: #6366f1;
+    text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px;
+  }
+  .nid-box input[type="text"] {
+    width: 100%; border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 10px; font-size: 13px;
+  }
+  .nid-box input[type="text"]:focus { border-color: #818cf8; outline: none; }
+  .nid-box input[type="file"] {
+    width: 100%; border: 2px dashed #c7d2fe; border-radius: 8px;
+    padding: 8px; font-size: 11px; color: #6b7280; background: #f8f9ff;
+    margin-top: 6px; cursor: pointer;
+  }
+  .nid-box input[type="file"]:hover { border-color: #818cf8; background: #f0f2ff; }
+  .nid-box input[type="file"]::file-selector-button {
+    border: none; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff;
+    padding: 6px 12px; border-radius: 6px; margin-right: 8px;
+    font-weight: 700; cursor: pointer; font-size: 11px;
+  }
+  .nid-preview {
+    margin-top: 6px; text-align: center;
+  }
+  .nid-preview img {
+    max-width: 100%; max-height: 120px; border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .nid-preview .no-img {
+    font-size: 10px; color: #9ca3af; font-style: italic;
+  }
+
+  /* Duty Hours highlight */
+  .hours-box {
+    background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+    border: 2px solid #818cf8; border-radius: 14px; padding: 14px;
+  }
+  .hours-box label {
+    display: block; font-size: 11px; font-weight: 800; color: #4338ca;
+    text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px;
+  }
+  .hours-box input {
+    width: 100%; border: 1.5px solid #c7d2fe; border-radius: 10px;
+    padding: 10px 12px; font-size: 18px; font-weight: 800; color: #4338ca;
+    background: #fff; text-align: center;
+  }
+  .hours-box input:focus { border-color: #6366f1; outline: none; }
+  .hours-hint {
+    font-size: 11px; color: #6b7280; margin-top: 6px;
+    display: flex; align-items: center; gap: 4px;
+  }
+</style>
+
+<form method="post" enctype="multipart/form-data" class="panel-card emp-form fade-in" style="max-width:880px;">
+  {% csrf_token %}
+  <div class="panel-header">
+    <i class="fas fa-user-{% if emp %}edit{% else %}plus{% endif %}"></i>
+    {% if emp %}Edit: {{ emp.name }}{% else %}New Employee{% endif %}
+  </div>
+
+  <div class="row g-3">
+    {% for f in form %}
+      {% if f.name == 'nid' or f.name == 'nid_image' or f.name == 'father_nid' or f.name == 'father_nid_image' or f.name == 'mother_nid' or f.name == 'mother_nid_image' %}
+        <!-- NID section আলাদা handle করব নিচে -->
+      {% elif f.name == 'target_hours' %}
+        <!-- Duty Hours আলাদা highlight এ দেখাব -->
+      {% else %}
+        <div class="col-md-6">
+          <label class="form-label-light">{{ f.label }}</label>
+          {{ f }}
+          {% if f.errors %}
+            <div style="color:#dc2626;font-size:11px;margin-top:4px;">{{ f.errors|striptags }}</div>
+          {% endif %}
+          {% if f.help_text %}
+            <div style="font-size:11px;color:#9ca3af;margin-top:3px;">{{ f.help_text }}</div>
+          {% endif %}
+        </div>
+      {% endif %}
+    {% endfor %}
+
+    <!-- Target Hours (Highlight) -->
+    <div class="col-md-6">
+      <div class="hours-box">
+        <label><i class="fas fa-clock me-1"></i> Daily Duty Hours</label>
+        {{ form.target_hours }}
+        <div class="hours-hint">
+          <i class="fas fa-info-circle"></i>
+          প্রতিদিন কত ঘণ্টা duty করবে (default: 8). অর্ধেক দিন হলে 4 লিখুন।
+        </div>
+        {% for e in form.target_hours.errors %}
+          <div style="color:#dc2626;font-size:11px;margin-top:4px;">{{ e }}</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- NID Section with Image Upload -->
+    <div class="col-12">
+      <div class="nid-section">
+        <div class="nid-section-title">
+          <i class="fas fa-id-card"></i> NID Information
+        </div>
+        <div class="nid-grid">
+          <!-- Employee NID -->
+          <div class="nid-box">
+            <label><i class="fas fa-user me-1"></i> Employee NID</label>
+            {{ form.nid }}
+            <label style="margin-top:8px;font-size:10px;">NID Image:</label>
+            {{ form.nid_image }}
+            {% if emp and emp.nid_image %}
+              <div class="nid-preview">
+                <img src="{{ emp.nid_image.url }}" alt="NID">
+              </div>
+            {% else %}
+              <div class="nid-preview"><span class="no-img">কোনো ছবি নেই</span></div>
+            {% endif %}
+            {% for e in form.nid_image.errors %}
+              <div style="color:#dc2626;font-size:11px;margin-top:4px;">{{ e }}</div>
+            {% endfor %}
+          </div>
+
+          <!-- Father's NID -->
+          <div class="nid-box">
+            <label><i class="fas fa-male me-1"></i> Father's NID</label>
+            {{ form.father_nid }}
+            <label style="margin-top:8px;font-size:10px;">NID Image:</label>
+            {{ form.father_nid_image }}
+            {% if emp and emp.father_nid_image %}
+              <div class="nid-preview">
+                <img src="{{ emp.father_nid_image.url }}" alt="Father's NID">
+              </div>
+            {% else %}
+              <div class="nid-preview"><span class="no-img">কোনো ছবি নেই</span></div>
+            {% endif %}
+            {% for e in form.father_nid_image.errors %}
+              <div style="color:#dc2626;font-size:11px;margin-top:4px;">{{ e }}</div>
+            {% endfor %}
+          </div>
+
+          <!-- Mother's NID -->
+          <div class="nid-box">
+            <label><i class="fas fa-female me-1"></i> Mother's NID</label>
+            {{ form.mother_nid }}
+            <label style="margin-top:8px;font-size:10px;">NID Image:</label>
+            {{ form.mother_nid_image }}
+            {% if emp and emp.mother_nid_image %}
+              <div class="nid-preview">
+                <img src="{{ emp.mother_nid_image.url }}" alt="Mother's NID">
+              </div>
+            {% else %}
+              <div class="nid-preview"><span class="no-img">কোনো ছবি নেই</span></div>
+            {% endif %}
+            {% for e in form.mother_nid_image.errors %}
+              <div style="color:#dc2626;font-size:11px;margin-top:4px;">{{ e }}</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex gap-2 mt-4">
+    <button class="btn-gradient" type="submit" style="width:auto;padding:10px 26px;">
+      <i class="fas fa-save"></i> Save
+    </button>
+    <a href="{% url 'employee_list' %}" class="btn-soft" style="text-decoration:none;">Cancel</a>
+  </div>
+</form>
+{% endblock %}

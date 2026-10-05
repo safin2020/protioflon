@@ -1,0 +1,115 @@
+{% extends "app_base.html" %}
+{% block page_title %}Employees{% endblock %}
+
+{% block content %}
+<style>
+  .emp-act { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
+  .act-btn {
+    width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--border);
+    background: #fff; display: inline-flex; align-items: center; justify-content: center;
+    font-size: 13px; cursor: pointer; transition: all .18s; padding: 0;
+  }
+  .act-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,.08); }
+  .act-pdf { color: #dc2626; border-color: #fecaca; background: #fef2f2; }
+  .act-pdf:hover { background: #fee2e2; border-color: #ef4444; }
+  .act-edit { color: #2563eb; border-color: #bfdbfe; background: #eff6ff; }
+  .act-edit:hover { background: #dbeafe; border-color: #3b82f6; }
+  .act-del { color: #6b7280; border-color: var(--border); background: #f9fafb; }
+  .act-del:hover { background: #fee2e2; border-color: #ef4444; color: #dc2626; }
+  .emp-cell { display: flex; align-items: center; gap: 12px; }
+  .emp-photo { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid #eef2ff; flex-shrink: 0; }
+  .emp-photo-fb {
+    width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, #818cf8, #6366f1); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;
+  }
+  .emp-name { font-weight: 700; color: #111827; font-size: 13.5px; }
+  .emp-sub { font-size: 11.5px; color: #6b7280; }
+  .emp-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+</style>
+
+<div class="emp-toolbar fade-in">
+  <form method="get" class="d-flex gap-2">
+    <input type="text" name="q" value="{{ q }}" class="search-box" placeholder="Search name, ID, mobile...">
+    <button class="btn-soft" type="submit"><i class="fas fa-search"></i></button>
+  </form>
+  <a href="{% url 'employee_form' %}" class="btn-gradient" style="width:auto;padding:10px 20px;font-size:13.5px;">
+    <i class="fas fa-user-plus"></i> Add Employee
+  </a>
+</div>
+
+{% if messages %}{% for m in messages %}
+<div class="alert {% if m.tags == 'error' %}alert-danger{% else %}alert-success{% endif %} py-2 small fade-in" style="border-radius:12px;">{{ m }}</div>
+{% endfor %}{% endif %}
+
+<div class="table-card fade-in">
+  <table>
+    <thead>
+      <tr>
+        <th>Employee</th>
+        <th>Designation</th>
+        <th>Department</th>
+        <th>Contact</th>
+        <th>Duty</th>
+        <th>Status</th>
+        <th style="text-align:right;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for e in employees %}
+      <tr>
+        <td>
+          <div class="emp-cell">
+            {% if e.photo %}
+              <img src="{{ e.photo.url }}" class="emp-photo" alt="{{ e.name }}">
+            {% else %}
+              <div class="emp-photo-fb">{{ e.name|slice:":1"|upper }}</div>
+            {% endif %}
+            <div>
+              <div class="emp-name">{{ e.name }}</div>
+              <div class="emp-sub">
+                <span style="color:#6366f1;font-weight:700;">{{ e.emp_id }}</span>
+                {% if e.user %} • <i class="fas fa-key" style="color:#f59e0b;"></i> {{ e.user.username }}{% endif %}
+              </div>
+            </div>
+          </div>
+        </td>
+        <td>{{ e.designation }}</td>
+        <td><span class="badge-soft" style="background:#eef2ff;color:#4338ca;">{{ e.department }}</span></td>
+        <td>
+          {{ e.mobile|default:"-" }}<br>
+          <span style="font-size:11.5px;color:#6b7280;">{{ e.email|default:"-" }}</span>
+        </td>
+        <td><span class="badge-soft" style="background:#f0f9ff;color:#0369a1;">{{ e.get_duty_group_display }}</span></td>
+        <td>
+          {% if e.status == 'active' %}
+            <span class="badge-soft badge-active">Active</span>
+          {% else %}
+            <span class="badge-soft badge-inactive">Inactive</span>
+          {% endif %}
+        </td>
+        <td>
+          <div class="emp-act">
+            <a class="act-btn act-pdf" title="Biodata PDF" href="{% url 'employee_biodata' e.id %}">
+              <i class="fas fa-file-pdf"></i>
+            </a>
+            <a class="act-btn act-edit" title="Edit" href="{% url 'employee_form' e.id %}">
+              <i class="fas fa-pen"></i>
+            </a>
+            <form method="post" action="{% url 'employee_delete' e.id %}" style="display:inline;"
+                  onsubmit="return confirm('{{ e.name }} Sure delete ?');">
+              {% csrf_token %}
+              <button type="submit" class="act-btn act-del" title="Delete">
+                <i class="fas fa-trash"></i>
+              </button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" style="text-align:center;color:#9ca3af;padding:30px;">No employees found. Add Employee </td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
